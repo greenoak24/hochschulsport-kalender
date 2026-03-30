@@ -1,0 +1,1617 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1056,
+        1632
+      ],
+      "id": "0171e146-d61c-4fa9-9e24-199a5178415d",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://hochschulsport.rwth-aachen.de/cms/hsz/sport/~hpoua/Sportangebot/?page=1&showall=1#search-results",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        288,
+        -16
+      ],
+      "id": "5a570a28-8407-4193-a85c-f3cbeaa318c7",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        336,
+        480
+      ],
+      "id": "39935709-720d-4eef-bf4e-1fa98570810c",
+      "name": "HTTP Request1",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "vincent.weller9@gmail.com",
+          "mode": "list",
+          "cachedResultName": "vincent.weller9@gmail.com"
+        },
+        "start": "={{ DateTime.fromFormat($json.StartDate + '2025 ' + $json.StartTime, 'dd.MM.yyyy HH:mm', { zone: 'Europe/Berlin' }).toISO() }}",
+        "end": "={{ DateTime.fromFormat($json.StartDate + '2025 ' + $json.EndTime, 'dd.MM.yyyy HH:mm', { zone: 'Europe/Berlin' }).toISO() }}",
+        "additionalFields": {
+          "color": "1",
+          "description": "={{ $json.URL }}\n{{ $json.Ort }}",
+          "id": "=",
+          "repeatFrecuency": "weekly",
+          "repeatUntil": "={{ DateTime.fromFormat($json.EndDate + '2026', 'dd.MM.yyyy', { zone: 'Europe/Berlin' }).toFormat('yyyy-MM-dd') }}",
+          "summary": "={{ $json.Titel }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -160,
+        1632
+      ],
+      "id": "a096b776-8a7c-4b93-b008-835499fac43f",
+      "name": "Create an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "HM5EvWJq1nkCnxAh",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1886797462,
+          "mode": "list",
+          "cachedResultName": "Sportarten",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit#gid=1886797462"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "url"
+          ],
+          "schema": [
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "path",
+              "displayName": "path",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        -16
+      ],
+      "id": "911f7b18-f78b-45f4-9ea7-6cb6dd1c2c14",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dpClE8VLk70a17Oy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = $json.data ?? '';\nconst baseUrl = 'https://hochschulsport.rwth-aachen.de';\n\nconst hrefRegex = /href=[\"']([^\"']+)[\"']/gi;\nconst hrefs = [...html.matchAll(hrefRegex)].map(m => m[1].trim());\n\nconst relevant = [...new Set(\n  hrefs.filter(href =>\n    href.startsWith('/cms/hsz/sport/Sportangebot/') ||\n    href.startsWith('/cms/hsz/events/')\n  )\n)];\n\nreturn relevant.map(href => ({\n  json: {\n    type: href.startsWith('/cms/hsz/events/') ? 'event' : 'sport',\n    path: href,\n    url: `${baseUrl}${href}`,\n    title: decodeURIComponent(href.split('/').filter(Boolean).pop() || ''),\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        -16
+      ],
+      "id": "30d6cf54-c26f-42f6-bfd3-ba834abae626",
+      "name": "Sportarten Parse"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const html = item.json.data ?? '';\n\n  const bookingLinks = [...html.matchAll(/href=\"(https:\\/\\/buchung\\.hsz\\.rwth-aachen\\.de\\/angebote\\/[^\"]+)\"/gi)]\n    .map(m => m[1].trim());\n\n  const unique = [...new Set(bookingLinks)];\n\n  for (const url of unique) {\n    results.push({\n      json: {\n        sourceTitle: $('Loop Over Items1').first().json.title ?? null,\n        sourceType: $('Loop Over Items1').first().json.type ?? null,\n        sourceUrl: $('Loop Over Items1').first().json.url ?? null,\n        sourcePath: $('Loop Over Items1').first().json.path ?? null,\n        rowNumber: $('Loop Over Items1').first().json.row_number ?? null,\n        bookingUrl: url,\n        semester: url.includes('/Wintersemester/') ? 'Wintersemester'\n          : url.includes('/Sommersemester/') ? 'Sommersemester'\n          : null,\n      }\n    });\n  }\n}\n\n// Fisher-Yates Shuffle\nfor (let i = results.length - 1; i > 0; i--) {\n  const j = Math.floor(Math.random() * (i + 1));\n  [results[i], results[j]] = [results[j], results[i]];\n}\n\nreturn results.length ? results : [{\n  json: {\n    message: 'Keine Buchungslinks gefunden',\n    inputItemCount: items.length,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        480
+      ],
+      "id": "523c170b-8393-4712-8eb8-3198c1ba7b22",
+      "name": "Buchungslinks Parse"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        96,
+        304
+      ],
+      "id": "35d19e26-319b-48b2-afc8-f85c64edfbd1",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        976,
+        480
+      ],
+      "id": "e7e873d3-4652-414b-a7ac-c933a62b784c",
+      "name": "Wait1",
+      "webhookId": "59f604f0-234d-4892-8ad4-48d6f70e0749"
+    },
+    {
+      "parameters": {
+        "content": "next steps:\nbuchung aus tabelle\nloggen, wenn http request nicht geklappt hat\nin code 3 ändern dass ein termin von titel abhängig ist\n"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1584,
+        1312
+      ],
+      "typeVersion": 1,
+      "id": "573367ee-f085-4fa5-9148-09e580e41b82",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 739937267,
+          "mode": "list",
+          "cachedResultName": "Buchungslinks",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit#gid=739937267"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "bookingUrl"
+          ],
+          "schema": [
+            {
+              "id": "sourceTitle",
+              "displayName": "sourceTitle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sourceUrl",
+              "displayName": "sourceUrl",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "bookingUrl",
+              "displayName": "bookingUrl",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "semester",
+              "displayName": "semester",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "inputItemCount",
+              "displayName": "inputItemCount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sourceType",
+              "displayName": "sourceType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sourcePath",
+              "displayName": "sourcePath",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "rowNumber",
+              "displayName": "rowNumber",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        736,
+        480
+      ],
+      "id": "47996f24-5130-445a-999e-ede958ed29f5",
+      "name": "Append or update row in sheet2",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dpClE8VLk70a17Oy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -16
+      ],
+      "id": "ea66fad4-3cae-49c8-b314-1da01811a8cf",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "content": "Zieht die Sportarten und ihre Links"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -352,
+        -48
+      ],
+      "typeVersion": 1,
+      "id": "63cb8a8d-85a9-40fb-8951-69b431463db6",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1886797462,
+          "mode": "list",
+          "cachedResultName": "Sportarten",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit#gid=1886797462"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -400,
+        304
+      ],
+      "id": "180f018a-1e46-4769-8cbe-d620467a52fd",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dpClE8VLk70a17Oy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        288
+      ],
+      "id": "0b0124dd-319a-4204-b484-be0e7b4a9ead",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "content": "Zieht die Buchungslinks zu den Sportarten\n"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -736,
+        272
+      ],
+      "typeVersion": 1,
+      "id": "dc0cc4e4-b3e7-4ac9-ba3b-109797f894dd",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "url": "={{$json.cleanBookingUrl || ($json.bookingUrl || $json.url || '').trim().replace(/[\\r\\n\\t]/g, '').replace(/\\s+/g, '')}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        2688
+      ],
+      "id": "407bc1b4-da2f-4501-825b-b4b1d7718ef7",
+      "name": "HTTP Request3",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -288,
+        2672
+      ],
+      "id": "668f4276-21c1-41fe-9cf8-a86af2187239",
+      "name": "Loop Over Items2",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      bookingUrl: $json.bookingUrl,\n      cleanBookingUrl: String($json.bookingUrl || $json.url || '')\n        .trim()\n        .replace(/[\\r\\n\\t]/g, '')\n        .replace(/\\s+/g, ''),\n      title: $json.title ?? null,\n      sourceTitle: $input.first().json.sourceTitle ?? null,\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        2688
+      ],
+      "id": "1e0960ed-70f5-4124-b678-fa53c4bb5c3b",
+      "name": "Code in JavaScript6",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        2496
+      ],
+      "id": "1df9aa1e-4921-4505-a854-22f1cbaf0f7e",
+      "name": "Code in JavaScript7"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Tabellenblatt1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID": "={{ $json.courseNumber }}",
+            "Titel": "={{ $json.details }}",
+            "Wochentag": "={{ $json.day }}",
+            "Start": "={{ $json.time }}",
+            "Ort": "={{ $json.location }}",
+            "Ende": "={{ $json.duration }}",
+            "Einzeltermin": "={{ $json.Einzeltermin }}",
+            "URL": "={{ $('Code in JavaScript6').item.json.cleanBookingUrl }}",
+            "Sportart": "={{ $('Loop Over Items2').item.json.sourceTitle }}",
+            "Buchung": "={{ $json.bookingStatus }}",
+            "preisStudierende": "={{ $json.price }}"
+          },
+          "matchingColumns": [
+            "ID"
+          ],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Wochentag",
+              "displayName": "Wochentag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sportart",
+              "displayName": "Sportart",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Titel",
+              "displayName": "Titel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Start",
+              "displayName": "Start",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ende",
+              "displayName": "Ende",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ort",
+              "displayName": "Ort",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "URL",
+              "displayName": "URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Einzeltermin",
+              "displayName": "Einzeltermin",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Buchung",
+              "displayName": "Buchung",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "preisStudierende",
+              "displayName": "preisStudierende",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        992,
+        2688
+      ],
+      "id": "f9bebb7d-9e15-4b4f-9af5-c5995979476f",
+      "name": "Append or update row in sheet3",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dpClE8VLk70a17Oy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.filter(item => item.json.semester === 'Wintersemester');\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -512,
+        2672
+      ],
+      "id": "6c5af833-1dc8-4f08-ac95-2915ceab67cf",
+      "name": "nur Wintersemester1"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "header",
+              "cssSelector": "table tr:has(th) th",
+              "returnValue": "html",
+              "returnArray": true
+            },
+            {
+              "key": "courses",
+              "cssSelector": "td.bs_sknr, td.bs_sdet, td.bs_stag, td.bs_szeit, td.bs_sort, td.bs_szr, td.bs_skl, td.bs_spreis, td.bs_sbuch\n",
+              "returnArray": true
+            },
+            {
+              "key": "sport",
+              "cssSelector": ".bs_head",
+              "returnArray": true
+            },
+            {
+              "key": "bookingLink",
+              "cssSelector": "td.bs_sbuch",
+              "returnValue": "html",
+              "returnArray": true
+            },
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        2688
+      ],
+      "id": "2bb35600-5bd8-4c6c-83f8-f5abb3f5b478",
+      "name": "HTML1",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const courses = $json.courses || [];\nconst sport = $json.sport || null;\n\nfunction cleanText(value) {\n  return (value || '')\n    .replace(/\\[\\/cgi\\/webpage\\.cgi\\?[^\\]]+\\]/g, '')\n    .replace(/\\n+/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction random10DigitNumber() {\n  return '--' + Math.floor(1000000000 + Math.random() * 9000000000).toString();\n}\n\nfunction isDay(value) {\n  return /^(Mo|Di|Mi|Do|Fr|Sa|So)$/i.test(cleanText(value));\n}\n\nfunction isDateRange(value) {\n  const v = cleanText(value);\n  return /^\\d{2}\\.\\d{2}\\.\\d{2,4}\\s*-\\s*\\d{2}\\.\\d{2}\\.\\d{2,4}/.test(v)\n    || /^\\d{2}\\.\\d{2}\\.\\s*-\\s*\\d{2}\\.\\d{2}\\./.test(v)\n    || /^\\d{2}\\.\\d{2}\\.\\d{4}\\s*-\\s*\\d{2}\\.\\d{2}\\.\\d{4}/.test(v);\n}\n\nfunction isPrice(value) {\n  return /€/.test(cleanText(value));\n}\n\nfunction isBookingStatus(value) {\n  const v = cleanText(value).toLowerCase();\n  return /buchung|ausgebucht|warteliste|belegt|keine buchung/.test(v);\n}\n\nfunction isCourseNumber(value) {\n  const v = cleanText(value);\n  return /^\\d+$/.test(v) || /^--\\d{10}$/.test(v);\n}\n\nconst cleaned = courses.map(cleanText).filter(Boolean);\nconst out = [];\n\nlet i = 0;\n\nwhile (i < cleaned.length) {\n  let courseNumber = cleaned[i] || '';\n  if (!isCourseNumber(courseNumber)) {\n    i++;\n    continue;\n  }\n\n  courseNumber = courseNumber || random10DigitNumber();\n  i++;\n\n  const details = cleaned[i] || '';\n  i++;\n\n  const scheduleBlocks = [];\n\n  while (\n    i + 2 < cleaned.length &&\n    isDay(cleaned[i])\n  ) {\n    scheduleBlocks.push({\n      day: cleaned[i] || '',\n      time: cleaned[i + 1] || '',\n      location: cleaned[i + 2] || '',\n    });\n    i += 3;\n  }\n\n  let duration = '';\n  let instructor = '';\n  let price = '';\n  let bookingStatus = '';\n\n  if (i < cleaned.length && isDateRange(cleaned[i])) {\n    duration = cleaned[i];\n    i++;\n  }\n\n  if (i < cleaned.length && !isPrice(cleaned[i]) && !isBookingStatus(cleaned[i]) && !isCourseNumber(cleaned[i])) {\n    instructor = cleaned[i];\n    i++;\n  }\n\n  if (i < cleaned.length && isPrice(cleaned[i])) {\n    price = cleaned[i];\n    i++;\n  }\n\n  if (i < cleaned.length && isBookingStatus(cleaned[i])) {\n    bookingStatus = cleaned[i];\n    i++;\n  }\n\n  out.push({\n    json: {\n      sport,\n      courseNumber,\n      details,\n      day: scheduleBlocks.map(x => x.day).join(' | '),\n      time: scheduleBlocks.map(x => x.time).join(' | '),\n      location: scheduleBlocks.map(x => x.location).join(' | '),\n      duration,\n      instructor,\n      price,\n      bookingStatus,\n      scheduleCount: scheduleBlocks.length,\n    }\n  });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        2688
+      ],
+      "id": "b4bd9540-634f-42a2-b84c-92e0d8013db3",
+      "name": "parse1",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const details = item.json.details || '';\n\n  return {\n    json: {\n      ...item.json,\n      Einzeltermin: details.includes('Ein Termin') ? 'ja' : 'nein'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        2688
+      ],
+      "id": "7cd02efc-4db5-4b55-b138-a38a2b5d3a46",
+      "name": "Code in JavaScript3",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        2688
+      ],
+      "id": "29e3cbbe-0a75-4b21-a99e-900cef70897a",
+      "name": "Wait2",
+      "webhookId": "02cbaa88-02bb-4661-8987-58b826182f86"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1929760338,
+          "mode": "list",
+          "cachedResultName": "Fehleranalyse",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit#gid=1929760338"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -784,
+        2672
+      ],
+      "id": "7514d796-0dba-41ac-b5ff-37f302e89610",
+      "name": "Get row(s) in sheet2",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dpClE8VLk70a17Oy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "erstellt die liste \"Long list Sportangebot\""
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1024,
+        928
+      ],
+      "typeVersion": 1,
+      "id": "b432aad9-4a5e-4aa2-89d9-f6883fc3246a",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "url": "={{$json.cleanBookingUrl || ($json.bookingUrl || $json.url || '').trim().replace(/[\\r\\n\\t]/g, '').replace(/\\s+/g, '')}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        320,
+        976
+      ],
+      "id": "e0dce60a-7e70-44a0-8ee0-38f322a2fee5",
+      "name": "HTTP Request4",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -176,
+        960
+      ],
+      "id": "0e68959a-3674-4bb4-882f-8e06fa96ab0c",
+      "name": "Loop Over Items",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      bookingUrl: $json.bookingUrl,\n      cleanBookingUrl: String($json.bookingUrl || $json.url || '')\n        .trim()\n        .replace(/[\\r\\n\\t]/g, '')\n        .replace(/\\s+/g, ''),\n      title: $json.title ?? null,\n      sourceTitle: $input.first().json.sourceTitle ?? null,\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        976
+      ],
+      "id": "c7bb502a-1f64-475e-8b80-c0f7deb3d843",
+      "name": "Code in JavaScript8",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        784
+      ],
+      "id": "ece9ae98-abec-4dba-8d89-d36f9cff953e",
+      "name": "Code in JavaScript9"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Kurse Data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID": "={{ $json.courseNumber }}",
+            "Titel": "={{ $json.details }}",
+            "Wochentag": "={{ $json.day }}",
+            "Start": "={{ $json.time }}",
+            "Ort": "={{ $json.location }}",
+            "Ende": "={{ $json.duration }}",
+            "Einzeltermin": "={{ $json.Einzeltermin }}",
+            "URL": "={{ $('Code in JavaScript8').item.json.cleanBookingUrl }}",
+            "Sportart": "={{ $('Loop Over Items').item.json.sourceTitle }}",
+            "Buchung": "={{ $json.bookingStatus }}",
+            "preisStudierende": "={{ $json.price }}",
+            "StartDatetime": "={{ $json.start }}",
+            "EndDateTime": "={{ $json.end }}",
+            "ReocurringEnd": "={{ $json.recurringEnd }}"
+          },
+          "matchingColumns": [
+            "ID"
+          ],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Wochentag",
+              "displayName": "Wochentag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sportart",
+              "displayName": "Sportart",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Titel",
+              "displayName": "Titel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Start",
+              "displayName": "Start",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "StartDatetime",
+              "displayName": "StartDatetime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Ende",
+              "displayName": "Ende",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "EndDateTime",
+              "displayName": "EndDateTime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ReocurringEnd",
+              "displayName": "ReocurringEnd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Ort",
+              "displayName": "Ort",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "URL",
+              "displayName": "URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Einzeltermin",
+              "displayName": "Einzeltermin",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Buchung",
+              "displayName": "Buchung",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "preisStudierende",
+              "displayName": "preisStudierende",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1104,
+        976
+      ],
+      "id": "e906e5a6-c1b5-4fe7-864c-86c3fb4d8d2c",
+      "name": "Append or update row in sheet4",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dpClE8VLk70a17Oy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "header",
+              "cssSelector": "table tr:has(th) th",
+              "returnValue": "html",
+              "returnArray": true
+            },
+            {
+              "key": "courses",
+              "cssSelector": "td.bs_sknr, td.bs_sdet > span, td.bs_stag, td.bs_szeit, td.bs_sort, td.bs_szr, td.bs_skl, td.bs_spreis, td.bs_sbuch\n",
+              "returnArray": true
+            },
+            {
+              "key": "sport",
+              "cssSelector": ".bs_head",
+              "returnArray": true
+            },
+            {
+              "key": "bookingLink",
+              "cssSelector": "td.bs_sbuch",
+              "returnValue": "html",
+              "returnArray": true
+            },
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        512,
+        976
+      ],
+      "id": "088c1b96-51c0-465e-829d-e33dc017c86a",
+      "name": "HTML",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const courses = $json.courses || [];\nconst bookingLinks = $json.bookingLink || [];\nconst sport = $json.sport || null;\n\nfunction cleanText(value) {\n  return (value || '')\n    .replace(/\\[\\/cgi\\/webpage\\.cgi\\?[^\\]]+\\]/g, '')\n    .replace(/\\n+/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction random10DigitNumber() {\n  return '--' + Math.floor(1000000000 + Math.random() * 9000000000).toString();\n}\n\nfunction isDay(value) {\n  return /^(Mo|Di|Mi|Do|Fr|Sa|So)$/i.test(cleanText(value));\n}\n\nfunction isTimeRange(value) {\n  return /^(\\d{1,2}):(\\d{2})\\s*-\\s*(\\d{1,2}):(\\d{2})$/.test(cleanText(value));\n}\n\nfunction isDateRange(value) {\n  const v = cleanText(value);\n  return /^\\d{2}\\.\\d{2}\\.\\d{4}$/.test(v)\n    || /^\\d{2}\\.\\d{2}\\.$/.test(v)\n    || /^\\d{2}\\.\\d{2}\\.\\d{2,4}\\s*-\\s*\\d{2}\\.\\d{2}\\.\\d{2,4}$/.test(v)\n    || /^\\d{2}\\.\\d{2}\\.\\s*-\\s*\\d{2}\\.\\d{2}\\.$/.test(v);\n}\n\nfunction isPrice(value) {\n  return /€/.test(cleanText(value));\n}\n\nfunction isCourseNumber(value) {\n  const v = cleanText(value);\n  return /^\\d+$/.test(v) || /^--\\d{10}$/.test(v);\n}\n\nfunction extractBookingStatus(html) {\n  const raw = html || '';\n\n  const valueMatch = raw.match(/value=\"([^\"]+)\"/i);\n  if (valueMatch) return cleanText(valueMatch[1]);\n\n  const textMatch = raw.match(/>([^<]+)</);\n  if (textMatch) return cleanText(textMatch[1]);\n\n  return '';\n}\n\nfunction pad(num) {\n  return String(num).padStart(2, '0');\n}\n\nfunction toIsoLocal(year, month, day, hour = 0, minute = 0) {\n  return `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:00`;\n}\n\nfunction parseTimeRange(timeText) {\n  const v = cleanText(timeText);\n  const match = v.match(/^(\\d{1,2}):(\\d{2})\\s*-\\s*(\\d{1,2}):(\\d{2})$/);\n\n  if (!match) {\n    return {\n      startHour: null,\n      startMinute: null,\n      endHour: null,\n      endMinute: null,\n    };\n  }\n\n  return {\n    startHour: Number(match[1]),\n    startMinute: Number(match[2]),\n    endHour: Number(match[3]),\n    endMinute: Number(match[4]),\n  };\n}\n\nfunction parseDateRange(durationText) {\n  const v = cleanText(durationText).replace(/\\s+/g, '');\n  const currentYear = new Date().getFullYear();\n\n  let match = v.match(/^(\\d{2})\\.(\\d{2})\\.(\\d{4})-(\\d{2})\\.(\\d{2})\\.(\\d{4})$/);\n  if (match) {\n    return {\n      type: 'range',\n      startDay: Number(match[1]),\n      startMonth: Number(match[2]),\n      startYear: Number(match[3]),\n      endDay: Number(match[4]),\n      endMonth: Number(match[5]),\n      endYear: Number(match[6]),\n    };\n  }\n\n  match = v.match(/^(\\d{2})\\.(\\d{2})\\.-(\\d{2})\\.(\\d{2})\\.$/);\n  if (match) {\n    const startDay = Number(match[1]);\n    const startMonth = Number(match[2]);\n    const endDay = Number(match[3]);\n    const endMonth = Number(match[4]);\n    const startYear = currentYear;\n    const endYear = endMonth < startMonth ? startYear + 1 : startYear;\n\n    return {\n      type: 'range',\n      startDay,\n      startMonth,\n      startYear,\n      endDay,\n      endMonth,\n      endYear,\n    };\n  }\n\n  match = v.match(/^(\\d{2})\\.(\\d{2})\\.(\\d{4})$/);\n  if (match) {\n    const day = Number(match[1]);\n    const month = Number(match[2]);\n    const year = Number(match[3]);\n\n    return {\n      type: 'single',\n      startDay: day,\n      startMonth: month,\n      startYear: year,\n      endDay: day,\n      endMonth: month,\n      endYear: year,\n    };\n  }\n\n  match = v.match(/^(\\d{2})\\.(\\d{2})\\.$/);\n  if (match) {\n    const day = Number(match[1]);\n    const month = Number(match[2]);\n\n    return {\n      type: 'single',\n      startDay: day,\n      startMonth: month,\n      startYear: currentYear,\n      endDay: day,\n      endMonth: month,\n      endYear: currentYear,\n    };\n  }\n\n  return null;\n}\n\nfunction buildScheduleTimes(timeText, durationText) {\n  const time = parseTimeRange(timeText);\n  const range = parseDateRange(durationText);\n\n  if (\n    !range ||\n    time.startHour === null ||\n    time.startMinute === null ||\n    time.endHour === null ||\n    time.endMinute === null\n  ) {\n    return {\n      start: '',\n      end: '',\n      recurringEnd: '',\n      isRecurring: false,\n    };\n  }\n\n  return {\n    start: toIsoLocal(\n      range.startYear,\n      range.startMonth,\n      range.startDay,\n      time.startHour,\n      time.startMinute\n    ),\n    end: toIsoLocal(\n      range.startYear,\n      range.startMonth,\n      range.startDay,\n      time.endHour,\n      time.endMinute\n    ),\n    recurringEnd: toIsoLocal(\n      range.endYear,\n      range.endMonth,\n      range.endDay,\n      23,\n      59\n    ),\n    isRecurring: range.type === 'range',\n  };\n}\n\nfunction looksLikeLocation(value) {\n  const v = cleanText(value);\n  if (!v) return false;\n  if (isDay(v) || isTimeRange(v) || isDateRange(v) || isPrice(v) || isCourseNumber(v)) return false;\n  return true;\n}\n\nconst cleaned = courses.map(cleanText).filter(Boolean);\nconst out = [];\n\nlet i = 0;\nlet bookingIndex = 0;\n\nwhile (i < cleaned.length) {\n  let courseNumber = cleaned[i] || '';\n  if (!isCourseNumber(courseNumber)) {\n    i++;\n    continue;\n  }\n\n  courseNumber = courseNumber || random10DigitNumber();\n  i++;\n\n  const details = cleaned[i] || '';\n  i++;\n\n  const scheduleBlocks = [];\n\n  while (i < cleaned.length && isDay(cleaned[i])) {\n    const day = cleaned[i] || '';\n    const time = cleaned[i + 1] || '';\n    let location = '';\n\n    if (!isTimeRange(time)) break;\n\n    i += 2;\n\n    const nextValue = cleaned[i] || '';\n    if (looksLikeLocation(nextValue)) {\n      location = nextValue;\n      i++;\n    }\n\n    scheduleBlocks.push({\n      day,\n      time,\n      location,\n    });\n  }\n\n  let duration = '';\n  let instructor = '';\n  let price = '';\n\n  if (i < cleaned.length && isDateRange(cleaned[i])) {\n    duration = cleaned[i];\n    i++;\n  }\n\n  if (i < cleaned.length && !isPrice(cleaned[i]) && !isCourseNumber(cleaned[i])) {\n    instructor = cleaned[i];\n    i++;\n  }\n\n  if (i < cleaned.length && isPrice(cleaned[i])) {\n    price = cleaned[i];\n    i++;\n  }\n\n  const bookingStatus = extractBookingStatus(bookingLinks[bookingIndex]);\n  bookingIndex++;\n\n  for (const block of scheduleBlocks) {\n    const scheduleTimes = buildScheduleTimes(block.time, duration);\n\n    out.push({\n      json: {\n        sport,\n        courseNumber,\n        details,\n        day: block.day,\n        time: block.time,\n        location: block.location || '',\n        duration,\n        instructor,\n        price,\n        bookingStatus,\n        start: scheduleTimes.start,\n        end: scheduleTimes.end,\n        recurringEnd: scheduleTimes.recurringEnd,\n        isRecurring: scheduleTimes.isRecurring,\n      }\n    });\n  }\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        976
+      ],
+      "id": "ae0f3f5c-df74-4f91-bfe8-23e898c35d28",
+      "name": "parse",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const details = item.json.details || '';\n\n  return {\n    json: {\n      ...item.json,\n      Einzeltermin: details.includes('Ein Termin') ? 'ja' : 'nein'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        976
+      ],
+      "id": "a8ed608a-bc5f-4ca3-9381-4738dff2a6a7",
+      "name": "Code in JavaScript4",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1312,
+        976
+      ],
+      "id": "4c52df73-3749-4384-b4af-e17102f89601",
+      "name": "Wait",
+      "webhookId": "02cbaa88-02bb-4661-8987-58b826182f86"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1929760338,
+          "mode": "list",
+          "cachedResultName": "Fehleranalyse",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit#gid=1929760338"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -672,
+        960
+      ],
+      "id": "9eaf2bfa-9b0a-4c68-881e-0e8c96b58b72",
+      "name": "Get row(s) in sheet3",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dpClE8VLk70a17Oy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1138191132,
+          "mode": "list",
+          "cachedResultName": "Sportkurse Longlist",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1he8ag6X03DCHSvSQeEC-tsjBKUlIJrPE8wev5TGsjtw/edit#gid=1138191132"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -688,
+        1632
+      ],
+      "id": "a9fd0461-cfdb-4447-9a67-8fc528a42251",
+      "name": "Get row(s) in sheet4",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dpClE8VLk70a17Oy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "maxItems": 2
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        1632
+      ],
+      "id": "923ab690-ba32-4264-aa26-85a682b086a5",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.filter(item => item.json.semester === 'Sommersemester');\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        960
+      ],
+      "id": "276f4fb8-54cf-433f-b4d2-ed23266614e8",
+      "name": "nur Sommersemester"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Sportarten Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Buchungslinks Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sportarten Parse": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buchungslinks Parse": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet2": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "HTML1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript7",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript6": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet3": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "nur Wintersemester1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML1": {
+      "main": [
+        [
+          {
+            "node": "parse1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "parse1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet2": {
+      "main": [
+        [
+          {
+            "node": "nur Wintersemester1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request4": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript9",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript8": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet4": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "parse": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet3": {
+      "main": [
+        [
+          {
+            "node": "nur Sommersemester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet4": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "nur Sommersemester": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "809c6dd4-5bf2-400d-8343-d98663b2a006",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5c18f6d1e13e1502d8d1adc15cf06926949004d77fe1d664563a1b7e8f6470a9"
+  },
+  "id": "vAlmTugEz1zDs2to",
+  "tags": []
+}

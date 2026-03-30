@@ -1,0 +1,597 @@
+:root {
+  --bg: #f3efe6;
+  --panel: rgba(255, 253, 249, 0.88);
+  --ink: #1d1f21;
+  --muted: #636058;
+  --accent: #dd5f31;
+  --accent-dark: #8f3b20;
+  --line: #d6ccba;
+  --chip: #ffe3d7;
+  --chip-hover: #ffd0bd;
+  --chip-single: #ffe7b6;
+  --chip-single-border: #e4b75d;
+  --chip-recurring: #d7f2e3;
+  --chip-recurring-border: #73b38e;
+  --selected: #fff2bf;
+  --shadow: 0 16px 48px rgba(40, 32, 21, 0.13);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 10% 20%, #f7f0d7 0%, transparent 45%),
+    radial-gradient(circle at 90% 0%, #ffd8bc 0%, transparent 42%),
+    linear-gradient(145deg, #ece5d7, #f7f3eb);
+  color: var(--ink);
+  font-family: "IBM Plex Sans Condensed", sans-serif;
+}
+
+.bg-orb {
+  position: fixed;
+  border-radius: 999px;
+  filter: blur(28px);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.orb-1 {
+  width: 260px;
+  height: 260px;
+  top: -70px;
+  left: -70px;
+  background: #ffb088;
+}
+
+.orb-2 {
+  width: 320px;
+  height: 320px;
+  bottom: -90px;
+  right: -90px;
+  background: #ffe081;
+}
+
+.layout {
+  width: min(1200px, 94vw);
+  margin: 24px auto 32px;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  grid-template-areas:
+    "hero hero"
+    "calendar details";
+  gap: 18px;
+}
+
+.hero {
+  grid-area: hero;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 24px 26px;
+  box-shadow: var(--shadow);
+  animation: rise 0.6s ease-out;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-dark);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.hero h1 {
+  margin: 10px 0 4px;
+  font: 800 clamp(1.8rem, 4vw, 2.8rem) / 1.1 "Sora", sans-serif;
+}
+
+.subline {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.calendar-shell,
+.detail-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+}
+
+.calendar-shell {
+  grid-area: calendar;
+  padding: 16px;
+  animation: rise 0.8s ease-out;
+}
+
+.calendar-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nav-group {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  padding: 9px 14px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.14s ease, background 0.14s ease;
+}
+
+.btn:hover {
+  background: #c65227;
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: #f3d8c8;
+  color: #7a331d;
+}
+
+.month-label {
+  margin: 0;
+  font: 700 1.25rem "Sora", sans-serif;
+}
+
+.calendar-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.view-group {
+  display: flex;
+  gap: 8px;
+}
+
+.view-btn.active {
+  background: var(--accent-dark);
+  color: #fff;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+#sportSearch {
+  min-width: 220px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 7px 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.sport-search-wrap {
+  position: relative;
+  min-width: 220px;
+}
+
+.suggestion-box {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.09);
+  max-height: 220px;
+  overflow-y: auto;
+  display: none;
+}
+
+.suggestion-box.visible {
+  display: block;
+}
+
+.suggestion-item {
+  width: 100%;
+  border: 0;
+  background: #fff;
+  text-align: left;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.suggestion-item:hover {
+  background: #f7efe8;
+}
+
+.selected-sports {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.sport-chip {
+  border: 1px solid #cdb28a;
+  background: #fff8e8;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.sport-chip::after {
+  content: " x";
+  font-weight: 700;
+}
+
+.toggle-filters {
+  width: 100%;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.toggle-filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.level-filter {
+  width: 100%;
+  display: none;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.level-filter.visible {
+  display: flex;
+}
+
+.level-label {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.level-chip {
+  border: 1px solid #c9bdaa;
+  background: #fff;
+  color: #3a342d;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.level-chip.off {
+  background: #f0ece4;
+  color: #8f877a;
+  border-color: #ddd3c4;
+  text-decoration: line-through;
+}
+
+.weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.weekday {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-align: center;
+  padding: 6px 2px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calendar-grid.month {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.calendar-grid.week {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.calendar-grid.day {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.time-grid-wrapper {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 8px;
+}
+
+.time-axis {
+  position: relative;
+  height: 960px;
+  display: grid;
+  grid-template-rows: repeat(17, 1fr);
+}
+
+.time-axis-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  transform: translateY(-8px);
+}
+
+.time-columns {
+  display: grid;
+  gap: 8px;
+  height: 960px;
+}
+
+.time-columns.week {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.time-columns.day {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.time-column {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent calc((100% / 16) - 1px),
+      rgba(165, 150, 127, 0.25) calc((100% / 16) - 1px),
+      rgba(165, 150, 127, 0.25) calc(100% / 16)
+    ),
+    rgba(255, 255, 255, 0.58);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.time-column.selected {
+  border-color: #d0ac2f;
+  box-shadow: inset 0 0 0 1px #d0ac2f;
+}
+
+.time-event {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 4px 6px;
+  overflow: hidden;
+  text-align: left;
+  min-height: 20px;
+}
+
+.time-event.single {
+  background: var(--chip-single);
+  border-color: var(--chip-single-border);
+}
+
+.time-event.recurring {
+  background: var(--chip-recurring);
+  border-color: var(--chip-recurring-border);
+}
+
+.time-event-time {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.time-event-title {
+  font-size: 0.78rem;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+.time-event-sport {
+  font-size: 0.72rem;
+  color: #524a3d;
+  margin-top: 2px;
+}
+
+.day-cell {
+  min-height: 130px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.56);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.12s ease;
+}
+
+.day-cell:hover {
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.day-cell.outside {
+  opacity: 0.45;
+}
+
+.day-cell.selected {
+  background: var(--selected);
+  border-color: #d0ac2f;
+}
+
+.calendar-grid.week .day-cell {
+  min-height: 180px;
+}
+
+.calendar-grid.day .day-cell {
+  min-height: 430px;
+}
+
+.day-number {
+  font-weight: 700;
+  font-family: "Sora", sans-serif;
+}
+
+.event-chip {
+  background: var(--chip);
+  border: 1px solid #f4c2aa;
+  border-radius: 10px;
+  padding: 3px 6px;
+  font-size: 0.8rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-chip:hover {
+  background: var(--chip-hover);
+}
+
+.event-chip.single {
+  background: var(--chip-single);
+  border-color: var(--chip-single-border);
+}
+
+.event-chip.recurring {
+  background: var(--chip-recurring);
+  border-color: var(--chip-recurring-border);
+}
+
+.detail-panel {
+  grid-area: details;
+  padding: 18px;
+  animation: rise 1s ease-out;
+}
+
+.detail-panel h3 {
+  margin: 0;
+  font: 700 1.4rem "Sora", sans-serif;
+}
+
+.detail-date {
+  margin: 6px 0 14px;
+  color: var(--muted);
+}
+
+.detail-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.detail-item {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px;
+  background: #fff;
+}
+
+.detail-item.single {
+  border-left: 6px solid var(--chip-single-border);
+}
+
+.detail-item.recurring {
+  border-left: 6px solid var(--chip-recurring-border);
+}
+
+.detail-time {
+  color: var(--accent-dark);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.detail-title {
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.detail-meta {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 980px) {
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "hero"
+      "calendar"
+      "details";
+  }
+
+  .day-cell {
+    min-height: 110px;
+  }
+
+  .time-grid-wrapper {
+    grid-template-columns: 48px 1fr;
+  }
+
+  .time-axis,
+  .time-columns {
+    height: 880px;
+  }
+
+  #sportSearch {
+    min-width: 160px;
+  }
+
+  .sport-search-wrap {
+    min-width: 160px;
+  }
+}

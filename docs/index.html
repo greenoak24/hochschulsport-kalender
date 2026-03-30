@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hochschulsport Kalender</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Sans+Condensed:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <main class="layout">
+      <header class="hero">
+        <p class="eyebrow">RWTH Hochschulsport</p>
+        <h1>Kurskalender</h1>
+        <p class="subline">Automatisch aktualisiert aus deinem migrierten Workflow.</p>
+      </header>
+
+      <section class="calendar-shell">
+        <div class="calendar-toolbar">
+          <div class="nav-group">
+            <button id="prevMonth" class="btn" type="button">Zurueck</button>
+            <button id="today" class="btn btn-ghost" type="button">Heute</button>
+            <button id="nextMonth" class="btn" type="button">Weiter</button>
+          </div>
+          <h2 id="monthLabel" class="month-label"></h2>
+        </div>
+
+        <div class="calendar-controls">
+          <div class="view-group" id="viewGroup">
+            <button class="btn btn-ghost view-btn active" data-view="month" type="button">Monat</button>
+            <button class="btn btn-ghost view-btn" data-view="week" type="button">Woche</button>
+            <button class="btn btn-ghost view-btn" data-view="day" type="button">Tag</button>
+          </div>
+
+          <div class="filter-group">
+            <label for="sportSearch">Sportarten</label>
+            <div class="sport-search-wrap">
+              <input id="sportSearch" type="search" placeholder="Sportart suchen..." autocomplete="off" />
+              <div id="sportSuggestionBox" class="suggestion-box"></div>
+            </div>
+            <button id="clearSportFilter" class="btn btn-ghost" type="button">Alle</button>
+            <div class="selected-sports" id="selectedSports"></div>
+          </div>
+
+          <div class="toggle-filters">
+            <label><input type="checkbox" id="bookableOnly" /> Nur buchbare</label>
+            <label><input type="checkbox" id="singleOnly" /> Nur Einzeltermine</label>
+          </div>
+
+          <div class="level-filter" id="levelFilterContainer"></div>
+        </div>
+
+        <div class="weekday-row" id="weekdayRow"></div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </section>
+
+      <aside class="detail-panel">
+        <h3 id="detailHeadline">Termine</h3>
+        <p id="detailDate" class="detail-date"></p>
+        <ul id="detailList" class="detail-list"></ul>
+      </aside>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
