@@ -2,6 +2,8 @@
 
 Dieses Repository ersetzt den bisherigen n8n-Workflow fuer die Kalenderdarstellung auf GitHub Pages.
 
+**[📅 Zur Kalender-Seite](https://greenoak24.github.io/hochschulsport-kalender/)**
+
 ## Was ist migriert?
 
 - Datenfluss ist jetzt dateibasiert im Repo statt in n8n-Nodes.
