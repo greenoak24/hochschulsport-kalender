@@ -462,6 +462,16 @@ body {
   grid-template-rows: repeat(17, 1fr);
 }
 
+.calendar-grid.week .time-grid-wrapper,
+.calendar-grid.day .time-grid-wrapper {
+  grid-template-columns: 1fr;
+}
+
+.calendar-grid.week .time-axis,
+.calendar-grid.day .time-axis {
+  display: none;
+}
+
 .time-axis-label {
   font-size: 0.75rem;
   color: var(--muted);

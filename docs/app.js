@@ -128,7 +128,6 @@ init();
 async function init() {
   await loadEvents();
   initializeSports();
-  renderSportFilterOptions();
   render();
 }
 
