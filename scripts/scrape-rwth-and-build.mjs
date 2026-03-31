@@ -4,7 +4,7 @@ import path from "node:path";
 const BASE_URL = "https://buchung.hsz.rwth-aachen.de/angebote/";
 const SEMESTER_PATHS = [
   "aktueller_zeitraum/",
-  "sommersemester/",
+  "Sommersemester/",
 ];
 const OUTPUT_FILE = process.env.OUTPUT_FILE || "docs/data/events.json";
 const MAX_COURSE_PAGES = Number(process.env.MAX_COURSE_PAGES || 450);
