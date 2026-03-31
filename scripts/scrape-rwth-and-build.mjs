@@ -1,9 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const START_URL =
-  process.env.START_URL ||
-  "https://buchung.hsz.rwth-aachen.de/angebote/aktueller_zeitraum/";
+const BASE_URL = "https://buchung.hsz.rwth-aachen.de/angebote/";
+const SEMESTER_PATHS = [
+  "aktueller_zeitraum/",
+  "sommersemester/",
+];
 const OUTPUT_FILE = process.env.OUTPUT_FILE || "docs/data/events.json";
 const MAX_COURSE_PAGES = Number(process.env.MAX_COURSE_PAGES || 450);
 const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS || 30000);
@@ -20,49 +22,69 @@ const weekdayMap = {
 };
 
 async function main() {
-  const indexHtml = await fetchText(START_URL);
-  const courseLinks = extractCourseLinks(indexHtml, START_URL).slice(0, MAX_COURSE_PAGES);
+  const allRows = [];
+  const allStats = { totalPages: 0, totalRows: 0 };
 
-  const rows = [];
-  for (const courseUrl of courseLinks) {
+  for (const semesterPath of SEMESTER_PATHS) {
+    const startUrl = BASE_URL + semesterPath;
+    console.log(`Scrape gestartet: ${startUrl}`);
+
     try {
-      const html = await fetchText(courseUrl);
-      const parsed = parseBookingPage({
-        html,
-        bookingUrl: courseUrl,
-        sourceTitle: inferTitleFromUrl(courseUrl),
-      });
+      const indexHtml = await fetchText(startUrl);
+      const courseLinks = extractCourseLinks(indexHtml, startUrl).slice(0, MAX_COURSE_PAGES);
+      allStats.totalPages += courseLinks.length;
 
-      rows.push(...parsed);
+      for (const courseUrl of courseLinks) {
+        try {
+          const html = await fetchText(courseUrl);
+          const parsed = parseBookingPage({
+            html,
+            bookingUrl: courseUrl,
+            sourceTitle: inferTitleFromUrl(courseUrl),
+          });
+
+          allRows.push(...parsed);
+          allStats.totalRows += parsed.length;
+        } catch (error) {
+          console.warn(`Kursseite fehlgeschlagen: ${courseUrl} (${error.message})`);
+        }
+      }
+
+      console.log(`✓ ${semesterPath}: ${courseLinks.length} Kursseiten, ${allRows.length} Zeilen insgesamt`);
     } catch (error) {
-      console.warn(`Kursseite fehlgeschlagen: ${courseUrl} (${error.message})`);
+      console.warn(`Semester fehlgeschlagen: ${semesterPath} (${error.message})`);
     }
   }
 
-  const events = rows
+  // Deduplizieren nach Kursnummer + Wochentag + Start
+  const uniqueRows = deduplicateRows(allRows);
+
+  const events = uniqueRows
     .map((row, index) => rowToEvent(row, index + 1))
     .filter(Boolean);
 
   if (DEBUG_ROWS) {
-    console.log("DEBUG rows sample:", rows.slice(0, 5));
+    console.log("DEBUG rows sample:", uniqueRows.slice(0, 5));
     console.log(
       "DEBUG field coverage:",
       {
-        withDay: rows.filter((r) => String(r.Wochentag || "").trim() !== "").length,
-        withStart: rows.filter((r) => String(r.Start || "").trim() !== "").length,
-        withEnde: rows.filter((r) => String(r.Ende || "").trim() !== "").length,
-        withStartDt: rows.filter((r) => String(r.StartDatetime || "").trim() !== "").length,
-        withEndDt: rows.filter((r) => String(r.EndDateTime || "").trim() !== "").length,
+        withDay: uniqueRows.filter((r) => String(r.Wochentag || "").trim() !== "").length,
+        withStart: uniqueRows.filter((r) => String(r.Start || "").trim() !== "").length,
+        withEnde: uniqueRows.filter((r) => String(r.Ende || "").trim() !== "").length,
+        withStartDt: uniqueRows.filter((r) => String(r.StartDatetime || "").trim() !== "").length,
+        withEndDt: uniqueRows.filter((r) => String(r.EndDateTime || "").trim() !== "").length,
       }
     );
   }
 
   const output = {
     generatedAt: new Date().toISOString(),
-    source: "hsz-aktueller-zeitraum",
+    source: "hsz-multi-semester",
     stats: {
-      coursePages: courseLinks.length,
-      rows: rows.length,
+      semesters: SEMESTER_PATHS.length,
+      coursePages: allStats.totalPages,
+      rawRows: allStats.totalRows,
+      deduplicatedRows: uniqueRows.length,
       events: events.length,
     },
     events,
@@ -73,7 +95,7 @@ async function main() {
   await fs.writeFile(targetPath, JSON.stringify(output, null, 2), "utf8");
 
   console.log(
-    `Scrape fertig: ${courseLinks.length} Kursseiten, ${events.length} Events -> ${OUTPUT_FILE}`
+    `Scrape fertig: ${SEMESTER_PATHS.length} Semester, ${allStats.totalPages} Kursseiten, ${uniqueRows.length} dedupliziert, ${events.length} Events -> ${OUTPUT_FILE}`
   );
 }
 
@@ -825,6 +847,27 @@ function orElse(...values) {
     }
   }
   return "";
+}
+
+function deduplicateRows(rows) {
+  const seen = new Set();
+  const unique = [];
+
+  for (const row of rows) {
+    const id = String(row.ID || "");
+    const day = String(row.Wochentag || "").toLowerCase();
+    const start = String(row.Start || "").trim();
+    const sport = String(row.Sportart || "").toLowerCase();
+
+    const key = `${id}|${day}|${start}|${sport}`;
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(row);
+    }
+  }
+
+  return unique;
 }
 
 async function fetchText(url) {
