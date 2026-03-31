@@ -17,6 +17,9 @@ const detailFormatter = new Intl.DateTimeFormat("de-DE", {
 });
 const DAY_START_MINUTES = 7 * 60;
 const DAY_END_MINUTES = 23 * 60;
+const DAY_EVENT_CARD_WIDTH = 180;
+const DAY_EVENT_CARD_GAP = 10;
+const DAY_EVENT_LABEL_GUTTER = 54;
 
 const state = {
   currentDate: stripTime(new Date()),
@@ -153,6 +156,15 @@ function initializeSports() {
 }
 
 function renderSportFilterOptions() {
+  const isSearchActive = document.activeElement === sportSearchEl;
+  const hasSearchText = Boolean(state.sportSearch);
+
+  if (!isSearchActive && !hasSearchText) {
+    sportSuggestionBoxEl.classList.remove("visible");
+    sportSuggestionBoxEl.innerHTML = "";
+    return;
+  }
+
   const visibleSports = !state.sportSearch
     ? state.allSports.slice()
     : state.allSports
@@ -370,12 +382,31 @@ function renderWeekdayHeader(viewRange) {
     return;
   }
 
-  weekdayRowEl.style.gridTemplateColumns = "repeat(7, minmax(0, 1fr))";
+  if (state.viewMode === "month") {
+    weekdayRowEl.style.gridTemplateColumns = "repeat(7, minmax(0, 1fr))";
+    weekdayNames.forEach((name) => {
+      const el = document.createElement("div");
+      el.className = "weekday";
+      el.textContent = name;
+      weekdayRowEl.appendChild(el);
+    });
+    return;
+  }
+
+  weekdayRowEl.style.gridTemplateColumns = "62px repeat(7, minmax(0, 1fr))";
+
+  const spacer = document.createElement("div");
+  spacer.className = "weekday weekday-spacer";
+  spacer.setAttribute("aria-hidden", "true");
+  weekdayRowEl.appendChild(spacer);
+
   for (let i = 0; i < 7; i++) {
     const date = addDays(viewRange.start, i);
-    const el = document.createElement("div");
-    el.className = "weekday";
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "weekday weekday-button";
     el.textContent = capitalize(dayHeaderFormatter.format(date));
+    el.addEventListener("click", () => openDayView(date));
     weekdayRowEl.appendChild(el);
   }
 }
@@ -423,9 +454,7 @@ function renderGrid(viewRange, eventsByDate) {
     }
 
     cell.addEventListener("click", () => {
-      state.selectedDate = key;
-      state.currentDate = date;
-      render();
+      openDayView(date);
     });
 
     calendarGridEl.appendChild(cell);
@@ -453,6 +482,11 @@ function renderTimeGrid(viewRange, eventsByDate) {
   const columns = document.createElement("div");
   columns.className = `time-columns ${state.viewMode}`;
 
+  if (state.viewMode === "day") {
+    wrapper.classList.add("day-scroll");
+    columns.classList.add("day-scroll-track");
+  }
+
   for (let i = 0; i < viewRange.cellCount; i++) {
     const date = addDays(viewRange.start, i);
     const key = toDateKey(date);
@@ -461,14 +495,51 @@ function renderTimeGrid(viewRange, eventsByDate) {
     const column = document.createElement("button");
     column.type = "button";
     column.className = `time-column${state.selectedDate === key ? " selected" : ""}`;
+
+    const hasLineLabels = state.viewMode === "day";
+
+    if (hasLineLabels) {
+      column.classList.add("with-line-labels");
+      appendLineTimeLabels(column);
+    }
+
     column.addEventListener("click", () => {
+      if (state.viewMode === "week") {
+        openDayView(date);
+        return;
+      }
+
       state.selectedDate = key;
       state.currentDate = date;
       render();
     });
 
-    dayEvents.forEach((event) => {
-      const eventEl = createTimedEventElement(event);
+    const dayLayout = state.viewMode === "day" ? buildDayEventLayout(dayEvents) : null;
+    const dayLaneCount = dayLayout
+      ? Math.max(1, dayLayout.reduce((max, item) => Math.max(max, item.columnCount), 1))
+      : 1;
+
+    if (state.viewMode === "day") {
+      column.classList.add("day-scroll-column");
+      const dayColumnWidth = DAY_EVENT_LABEL_GUTTER
+        + dayLaneCount * DAY_EVENT_CARD_WIDTH
+        + Math.max(0, dayLaneCount - 1) * DAY_EVENT_CARD_GAP
+        + 12;
+      column.style.minWidth = `${dayColumnWidth}px`;
+    }
+
+    dayEvents.forEach((event, index) => {
+      const eventEl = createTimedEventElement(
+        event,
+        dayLayout ? dayLayout[index] : null,
+        hasLineLabels,
+        {
+          fixedWidth: state.viewMode === "day",
+          laneWidth: DAY_EVENT_CARD_WIDTH,
+          laneGap: DAY_EVENT_CARD_GAP,
+          labelGutter: DAY_EVENT_LABEL_GUTTER,
+        }
+      );
       column.appendChild(eventEl);
     });
 
@@ -479,7 +550,7 @@ function renderTimeGrid(viewRange, eventsByDate) {
   calendarGridEl.appendChild(wrapper);
 }
 
-function createTimedEventElement(event) {
+function createTimedEventElement(event, layout = null, hasLineLabels = false, options = {}) {
   const eventEl = document.createElement("div");
   eventEl.className = `time-event ${event.isSingle ? "single" : "recurring"}`;
 
@@ -489,13 +560,33 @@ function createTimedEventElement(event) {
   const range = DAY_END_MINUTES - DAY_START_MINUTES;
   const top = ((start - DAY_START_MINUTES) / range) * 100;
   const height = ((safeEnd - start) / range) * 100;
+  const leftInset = hasLineLabels ? (options.labelGutter ?? DAY_EVENT_LABEL_GUTTER) : 6;
+  const widthInset = hasLineLabels ? 58 : 10;
 
   eventEl.style.top = `${top}%`;
   eventEl.style.height = `${height}%`;
+  eventEl.style.left = `${leftInset}px`;
+  eventEl.style.right = "6px";
 
-  const time = document.createElement("div");
-  time.className = "time-event-time";
-  time.textContent = event.timeLabel || "Zeit offen";
+  if (options.fixedWidth) {
+    const laneWidth = options.laneWidth ?? DAY_EVENT_CARD_WIDTH;
+    const laneGap = options.laneGap ?? DAY_EVENT_CARD_GAP;
+    const laneIndex = layout ? layout.columnIndex : 0;
+    const leftPx = leftInset + laneIndex * (laneWidth + laneGap);
+
+    eventEl.style.left = `${leftPx}px`;
+    eventEl.style.width = `${laneWidth}px`;
+    eventEl.style.right = "auto";
+    eventEl.style.zIndex = String(10 + laneIndex);
+  } else if (layout && layout.columnCount > 1) {
+    const widthPerColumn = 100 / layout.columnCount;
+    const leftPercent = layout.columnIndex * widthPerColumn;
+
+    eventEl.style.left = `calc(${leftPercent}% + ${leftInset}px)`;
+    eventEl.style.width = `calc(${widthPerColumn}% - ${widthInset}px)`;
+    eventEl.style.right = "auto";
+    eventEl.style.zIndex = String(10 + layout.columnIndex);
+  }
 
   const title = document.createElement("div");
   title.className = "time-event-title";
@@ -505,10 +596,99 @@ function createTimedEventElement(event) {
   sport.className = "time-event-sport";
   sport.textContent = event.sport || "";
 
-  eventEl.append(time, title);
+  eventEl.append(title);
   if (event.sport) eventEl.appendChild(sport);
 
   return eventEl;
+}
+
+function appendLineTimeLabels(column) {
+  const range = DAY_END_MINUTES - DAY_START_MINUTES;
+
+  for (let hour = DAY_START_MINUTES / 60; hour <= DAY_END_MINUTES / 60; hour++) {
+    const marker = document.createElement("span");
+    marker.className = "time-line-label";
+    marker.textContent = `${pad(hour)}:00`;
+    marker.style.top = `${((hour * 60 - DAY_START_MINUTES) / range) * 100}%`;
+    column.appendChild(marker);
+  }
+}
+
+function buildDayEventLayout(events) {
+  if (!events.length) return [];
+
+  const assignments = events.map((event, originalIndex) => {
+    const start = Math.max(DAY_START_MINUTES, event.startMinutes ?? DAY_START_MINUTES);
+    const end = Math.min(DAY_END_MINUTES, event.endMinutes ?? start + 60);
+    const safeEnd = Math.max(start + 20, end);
+
+    return {
+      originalIndex,
+      start,
+      end: safeEnd,
+      columnIndex: 0,
+      columnCount: 1,
+    };
+  });
+
+  const sorted = assignments.slice().sort((a, b) => {
+    if (a.start !== b.start) return a.start - b.start;
+    return a.end - b.end;
+  });
+
+  const activeColumnsEnd = [];
+  sorted.forEach((item) => {
+    let assignedColumn = activeColumnsEnd.findIndex((columnEnd) => columnEnd <= item.start);
+    if (assignedColumn === -1) {
+      assignedColumn = activeColumnsEnd.length;
+      activeColumnsEnd.push(item.end);
+    } else {
+      activeColumnsEnd[assignedColumn] = item.end;
+    }
+
+    item.columnIndex = assignedColumn;
+  });
+
+  let groupStart = 0;
+  let groupEnd = sorted[0].end;
+
+  for (let i = 1; i <= sorted.length; i++) {
+    const item = sorted[i];
+    const startsNewGroup = !item || item.start >= groupEnd;
+
+    if (!startsNewGroup) {
+      groupEnd = Math.max(groupEnd, item.end);
+      continue;
+    }
+
+    const group = sorted.slice(groupStart, i);
+    const columnCount = group.reduce((max, entry) => Math.max(max, entry.columnIndex + 1), 1);
+    group.forEach((entry) => {
+      entry.columnCount = columnCount;
+    });
+
+    if (item) {
+      groupStart = i;
+      groupEnd = item.end;
+    }
+  }
+
+  const layout = new Array(events.length);
+  sorted.forEach((entry) => {
+    layout[entry.originalIndex] = {
+      columnIndex: entry.columnIndex,
+      columnCount: entry.columnCount,
+    };
+  });
+
+  return layout;
+}
+
+function openDayView(date) {
+  state.currentDate = stripTime(date);
+  state.selectedDate = toDateKey(date);
+  state.viewMode = "day";
+  render();
 }
 
 function renderDetails(events) {

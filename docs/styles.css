@@ -349,6 +349,52 @@ body {
   text-decoration: line-through;
 }
 
+.event-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 9px 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.legend-title {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: #3d352c;
+  font-weight: 600;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.legend-dot.single {
+  background: var(--chip-single);
+  border-color: var(--chip-single-border);
+}
+
+.legend-dot.recurring {
+  background: var(--chip-recurring);
+  border-color: var(--chip-recurring-border);
+}
+
 .weekday-row {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -366,6 +412,24 @@ body {
   font-weight: 700;
 }
 
+.weekday-button {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.weekday-button:hover {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: var(--line);
+}
+
+.weekday-spacer {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -379,6 +443,10 @@ body {
 .calendar-grid.week,
 .calendar-grid.day {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.calendar-grid.day {
+  overflow-x: auto;
 }
 
 .day-cell {
@@ -462,12 +530,18 @@ body {
   grid-template-rows: repeat(17, 1fr);
 }
 
-.calendar-grid.week .time-grid-wrapper,
+.calendar-grid.week .time-grid-wrapper {
+  grid-template-columns: 62px 1fr;
+}
+
 .calendar-grid.day .time-grid-wrapper {
   grid-template-columns: 1fr;
 }
 
-.calendar-grid.week .time-axis,
+.calendar-grid.week .time-axis {
+  display: grid;
+}
+
 .calendar-grid.day .time-axis {
   display: none;
 }
@@ -476,6 +550,12 @@ body {
   font-size: 0.75rem;
   color: var(--muted);
   transform: translateY(-8px);
+}
+
+.calendar-grid.week .time-axis-label {
+  text-align: right;
+  padding-right: 6px;
+  font-weight: 700;
 }
 
 .time-columns {
@@ -509,9 +589,40 @@ body {
   overflow: hidden;
 }
 
+.time-line-label {
+  position: absolute;
+  left: 8px;
+  transform: translateY(-50%);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #786e5f;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 6px;
+  padding: 0 4px;
+  line-height: 1.3;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .time-column.selected {
   border-color: #cea145;
   box-shadow: inset 0 0 0 1px #d4aa57;
+}
+
+.time-column.with-line-labels {
+  padding-left: 0;
+}
+
+.time-grid-wrapper.day-scroll {
+  min-width: max-content;
+}
+
+.time-columns.day.day-scroll-track {
+  min-width: max-content;
+}
+
+.time-column.day-scroll-column {
+  width: max-content;
 }
 
 .time-event {
@@ -526,6 +637,7 @@ body {
   text-align: left;
   min-height: 20px;
   box-shadow: 0 6px 10px rgba(30, 24, 16, 0.08);
+  z-index: 2;
 }
 
 .time-event.single {
