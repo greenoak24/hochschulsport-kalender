@@ -707,6 +707,16 @@ function renderDetails(events) {
 }
 
 function filterEvents(events) {
+  const overlay = document.getElementById("emptyStateOverlay");
+  if (overlay) {
+    if (state.selectedSports.size === 0) {
+      overlay.style.display = "block";
+    } else {
+      overlay.style.display = "none";
+    }
+  }
+  if (state.selectedSports.size === 0) return [];
+
   return events.filter((event) => {
     const meta = getEventMeta(event);
     const isSingle = deriveIsSingle(event);

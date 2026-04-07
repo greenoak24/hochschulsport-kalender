@@ -43,7 +43,7 @@
               <input id="sportSearch" type="search" placeholder="Sportart suchen..." autocomplete="off" />
               <div id="sportSuggestionBox" class="suggestion-box"></div>
             </div>
-            <button id="clearSportFilter" class="btn btn-ghost" type="button">Alle</button>
+            
             <div class="selected-sports" id="selectedSports"></div>
           </div>
 
@@ -70,6 +70,9 @@
 
         <div class="weekday-row" id="weekdayRow"></div>
         <div class="calendar-grid" id="calendarGrid"></div>
+        <div id="emptyStateOverlay" class="empty-state">
+          Bitte suche oder wähle eine Sportart aus, um den Kalender zu füllen.
+        </div>
       </section>
 
       <aside class="detail-panel">

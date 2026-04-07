@@ -479,3 +479,30 @@ button { font-family: inherit; }
 .ai-msg p:last-child { margin-bottom: 0; }
 .ai-msg a { color: var(--accent); text-decoration: underline; }
 .ai-msg.user a { color: var(--accent-soft); }
+
+.calendar-shell, .layout {
+  position: relative;
+}
+.empty-state {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--paper);
+  padding: 1.5rem 2.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  font-weight: 500;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 50;
+}
+@media (max-width: 768px) {
+  .empty-state {
+    width: 90%;
+    padding: 1rem;
+    font-size: 0.95rem;
+  }
+}
