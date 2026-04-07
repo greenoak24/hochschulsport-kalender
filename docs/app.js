@@ -1049,70 +1049,70 @@ function capitalize(value) {
 // --- KI CHAT WIDGET LOGIK ---
 const WORKER_URL = "https://twilight-waterfall-c273.v-weller9.workers.dev";
 
-const chatWindow = document.getElementById('chatWindow');
-const chatToggleBtn = document.getElementById('chatToggleButton');
-const chatCloseBtn = document.getElementById('chatCloseButton');
-const chatForm = document.getElementById('chatForm');
-const chatInput = document.getElementById('chatInput');
-const chatMessages = document.getElementById('chatMessages');
-const chatSubmit = document.getElementById('chatSubmit');
+const aiWindow = document.getElementById('aiWindow');
+const chatToggleBtn = document.getElementById('aiToggleButton');
+const chatCloseBtn = document.getElementById('aiCloseButton');
+const aiForm = document.getElementById('aiForm');
+const aiInput = document.getElementById('aiInput');
+const aiMessages = document.getElementById('aiMessages');
+const aiSubmit = document.getElementById('aiSubmit');
 
 let chatHistory = [];
 
-chatInput.addEventListener('input', function() {
+aiInput.addEventListener('input', function() {
   this.style.height = 'auto';
   this.style.height = (this.scrollHeight) + 'px';
 });
 
-chatInput.addEventListener('keydown', function(e) {
+aiInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    chatForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    aiForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
   }
 });
 
 chatToggleBtn.addEventListener('click', () => {
-  chatWindow.classList.toggle('open');
-  if (chatWindow.classList.contains('open')) chatInput.focus();
+  aiWindow.classList.toggle('open');
+  if (aiWindow.classList.contains('open')) aiInput.focus();
 });
 
 chatCloseBtn.addEventListener('click', () => {
-  chatWindow.classList.remove('open');
+  aiWindow.classList.remove('open');
 });
 
 function appendMessage(text, role) {
   const msgDiv = document.createElement('div');
-  msgDiv.className = `chat-msg ${role}`;
+  msgDiv.className = `ai-msg ${role === "bot" ? "ai" : role}`;
   if (role === 'bot' && typeof marked !== 'undefined') {
     msgDiv.innerHTML = marked.parse(text);
   } else {
     msgDiv.textContent = text;
   }
-  chatMessages.appendChild(msgDiv);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+  aiMessages.appendChild(msgDiv);
+  aiMessages.scrollTop = aiMessages.scrollHeight;
 }
 
-chatForm.addEventListener('submit', async (e) => {
+aiForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const text = chatInput.value.trim();
+  const text = aiInput.value.trim();
   if (!text) return;
   
   // Eigene Nachricht anzeigen
   appendMessage(text, "user");
-  chatInput.value = "";
-  chatInput.style.height = 'auto'; // Setzt die Höhe wieder zurück
-  chatInput.disabled = true;
-  chatSubmit.disabled = true;
+  aiInput.value = "";
+  aiInput.style.height = 'auto'; // Setzt die Höhe wieder zurück
+  aiInput.disabled = true;
+  aiSubmit.disabled = true;
   
   chatHistory.push({ role: "user", parts: [{ text }] });
 
   // Füge einen Lade-Indikator hinzu
   const loadingDiv = document.createElement('div');
-  loadingDiv.className = "chat-msg bot";
+  loadingDiv.className = "ai-msg ai";
   loadingDiv.textContent = "Denkt nach...";
-  loadingDiv.id = "chatLoading";
-  chatMessages.appendChild(loadingDiv);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+  loadingDiv.id = "aiLoading";
+  aiMessages.appendChild(loadingDiv);
+  aiMessages.scrollTop = aiMessages.scrollHeight;
 
   try {
     if (WORKER_URL === "HIER_URL_VON_DEINEM_WORKER_EINTRAGEN") {
@@ -1151,7 +1151,7 @@ chatForm.addEventListener('submit', async (e) => {
     });
 
     const data = await response.json();
-    document.getElementById("chatLoading")?.remove();
+    document.getElementById("aiLoading")?.remove();
     
     if (data.candidates && data.candidates[0].content.parts[0].text) {
       const gResult = data.candidates[0].content.parts[0].text;
@@ -1163,11 +1163,11 @@ chatForm.addEventListener('submit', async (e) => {
       appendMessage("Sorry, ich konnte das nicht beantworten (" + errMsg + ").", "bot");
     }
   } catch (err) {
-    document.getElementById("chatLoading")?.remove();
+    document.getElementById("aiLoading")?.remove();
     appendMessage("Verbindungsfehler: " + err.message, "bot");
   }
 
-  chatInput.disabled = false;
-  chatSubmit.disabled = false;
-  chatInput.focus();
+  aiInput.disabled = false;
+  aiSubmit.disabled = false;
+  aiInput.focus();
 });
