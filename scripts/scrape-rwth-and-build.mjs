@@ -41,6 +41,7 @@ async function main() {
             html,
             bookingUrl: courseUrl,
             sourceTitle: inferTitleFromUrl(courseUrl),
+            semester: semesterPath.replace('/', ''),
           });
 
           allRows.push(...parsed);
@@ -59,9 +60,87 @@ async function main() {
   // Deduplizieren nach Kursnummer + Wochentag + Start
   const uniqueRows = deduplicateRows(allRows);
 
-  const events = uniqueRows
+  // 1. Array of raw events completely mapped
+  const rawEvents = uniqueRows
     .map((row, index) => rowToEvent(row, index + 1))
     .filter(Boolean);
+
+  // 2. Discover boundaries per semester dynamically
+  const semesterBounds = {};
+  for (const sem of SEMESTER_PATHS) {
+    const semName = sem.replace('/', '');
+    const evs = rawEvents.filter(e => e.extendedProps?.semester === semName && e.startRecur && e.endRecur);
+    
+    const p1Dates = [];
+    const p2Dates = [];
+    
+    for (const e of evs) {
+      const sStr = e.startRecur;
+      const eStr = e.endRecur;
+      const sMonth = parseInt(sStr.split('-')[1], 10);
+      
+      // Filtere extreme "Ganzsemester"-Kurse heraus, damit sie die typischen P1/P2-Grenzen nicht verfälschen
+      const days = (new Date(eStr) - new Date(sStr)) / (1000 * 60 * 60 * 24);
+      if (days > 120) continue; 
+      
+      if (semName === "Sommersemester") {
+        if (sMonth <= 6) p1Dates.push(e);
+        else p2Dates.push(e);
+      } else {
+        if (sMonth >= 9 || sMonth <= 1) p1Dates.push(e); // Winter: Oct-Jan
+        else p2Dates.push(e); // Winter: Feb-Apr
+      }
+    }
+    
+    const getBounds = (list) => {
+      if (!list.length) return { start: 0, end: 99999999 };
+      let minS = 99999999;
+      let maxE = 0;
+      for (const e of list) {
+        minS = Math.min(minS, parseInt(e.startRecur.replace(/-/g, ""), 10));
+        maxE = Math.max(maxE, parseInt(e.endRecur.replace(/-/g, ""), 10));
+      }
+      return { start: minS, end: maxE };
+    };
+    
+    semesterBounds[semName] = {
+      p1: getBounds(p1Dates),
+      p2: getBounds(p2Dates)
+    };
+  }
+
+  console.log("Dynamische Zeiträume ermittelt:", semesterBounds);
+
+  // 3. Assign p1 and p2 flags strictly based on these discovered bounds
+  const events = rawEvents.map(e => {
+    let p1 = false;
+    let p2 = false;
+    const semName = e.extendedProps?.semester;
+    const bounds = semesterBounds[semName];
+    
+    if (e.extendedProps?.explicitP1) p1 = true;
+    if (e.extendedProps?.explicitP2) p2 = true;
+
+    // Use intersection logic ONLY if the course isn't explicitly labelled
+    if (!p1 && !p2 && bounds) {
+      const sStr = e.startRecur || (e.start ? e.start.split('T')[0] : null);
+      const eStr = e.endRecur || sStr;
+      
+      if (sStr && eStr) {
+        const sDate = parseInt(sStr.replace(/-/g, ""), 10);
+        const eDate = parseInt(eStr.replace(/-/g, ""), 10);
+        
+        // A course is in P1 if it intersects with P1 bounds
+        if (sDate <= bounds.p1.end && eDate >= bounds.p1.start) p1 = true;
+        // A course is in P2 if it intersects with P2 bounds
+        if (sDate <= bounds.p2.end && eDate >= bounds.p2.start) p2 = true;
+      }
+    }
+    
+    e.extendedProps.period1 = p1;
+    e.extendedProps.period2 = p2;
+    return e;
+  });
 
   if (DEBUG_ROWS) {
     console.log("DEBUG rows sample:", uniqueRows.slice(0, 5));
@@ -80,6 +159,7 @@ async function main() {
   const output = {
     generatedAt: new Date().toISOString(),
     source: "hsz-multi-semester",
+    semesterBounds,
     stats: {
       semesters: SEMESTER_PATHS.length,
       coursePages: allStats.totalPages,
@@ -117,7 +197,7 @@ function extractCourseLinks(indexHtml, baseUrl) {
   return unique(links);
 }
 
-function parseBookingPage({ html, bookingUrl, sourceTitle }) {
+function parseBookingPage({ html, bookingUrl, sourceTitle, semester }) {
   const sport = extractSportHeadline(html) || sourceTitle;
   const rows = extractCourseRowsFromHtml(html);
 
@@ -132,6 +212,7 @@ function parseBookingPage({ html, bookingUrl, sourceTitle }) {
       return {
         ID: courseNumber,
         Titel: row.details,
+        Semester: semester || null,
         Sportart: sourceTitle || sport || null,
         Wochentag: row.day,
         Start: row.time,
@@ -145,6 +226,8 @@ function parseBookingPage({ html, bookingUrl, sourceTitle }) {
         Buchung: row.bookingStatus,
         preisStudierende: row.price,
         instructor: row.instructor,
+        explicitP1: row.explicitP1,
+        explicitP2: row.explicitP2,
       };
     })
     .filter(Boolean);
@@ -183,32 +266,43 @@ function extractCourseColumns(html) {
 function extractCourseRowsFromHtml(html) {
   const out = [];
 
-  for (const rowMatch of html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)) {
-    const rowHtml = rowMatch[1] || "";
-    if (!/\bbs_sknr\b/i.test(rowHtml)) continue;
+  const blocks = html.split(/<div[^>]*class=["'][^"']*bs_angblock\b[^"']*["']/i);
+  if (blocks.length === 0) return out;
 
-    const courseNumber = cleanText(extractCellHtml(rowHtml, "bs_sknr"));
-    const details = cleanText(extractCellHtml(rowHtml, "bs_sdet"));
-    const day = cleanText(extractCellHtml(rowHtml, "bs_stag"));
-    const time = cleanText(extractCellHtml(rowHtml, "bs_szeit"));
-    const location = cleanText(extractCellHtml(rowHtml, "bs_sort"));
-    const duration = cleanText(extractCellHtml(rowHtml, "bs_szr"));
-    const instructor = cleanText(extractCellHtml(rowHtml, "bs_skl"));
-    const price = cleanText(extractCellHtml(rowHtml, "bs_spreis"));
-    const bookingHtml = extractCellHtml(rowHtml, "bs_sbuch");
-    const bookingStatus = extractBookingStatus(bookingHtml);
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    const explicitP1 = /1\.?\s*zeitraum|erster\s*zeitraum/i.test(block);
+    const explicitP2 = /2\.?\s*zeitraum|zweiter\s*zeitraum/i.test(block);
 
-    out.push({
-      courseNumber,
-      details,
-      day,
-      time,
-      location,
-      duration,
-      instructor,
-      price,
-      bookingStatus,
-    });
+    const parts = block.split(/<tr[^>]*class=["']bs_(?:odd|even)["'][^>]*>/i).slice(1);
+    for (const rowHtml of parts) {
+      if (!/\bbs_sknr\b/i.test(rowHtml)) continue;
+
+      const courseNumber = cleanText(extractCellHtml(rowHtml, "bs_sknr"));
+      const details = cleanText(extractCellHtml(rowHtml, "bs_sdet"));
+      const day = cleanText(extractCellHtml(rowHtml, "bs_stag"));
+      const time = cleanText(extractCellHtml(rowHtml, "bs_szeit"));
+      const location = cleanText(extractCellHtml(rowHtml, "bs_sort"));
+      const duration = cleanText(extractCellHtml(rowHtml, "bs_szr"));
+      const instructor = cleanText(extractCellHtml(rowHtml, "bs_skl"));
+      const price = cleanText(extractCellHtml(rowHtml, "bs_spreis"));
+      const bookingHtml = extractCellHtml(rowHtml, "bs_sbuch");
+      const bookingStatus = extractBookingStatus(bookingHtml);
+
+      out.push({
+        courseNumber,
+        details,
+        day,
+        time,
+        location,
+        duration,
+        instructor,
+        price,
+        bookingStatus,
+        explicitP1,
+        explicitP2,
+      });
+    }
   }
 
   return out;
@@ -365,11 +459,14 @@ function rowToEvent(rawRow, index) {
     url: row.url || undefined,
     extendedProps: {
       courseId: row.id || null,
+      semester: row.semester || null,
       sport: row.sportart || null,
       location: row.ort || null,
       bookingStatus: row.buchung || null,
       price: row.preisstudierende || null,
       sourceTitle: row.titel || null,
+      explicitP1: row.explicitp1 === "true",
+      explicitP2: row.explicitp2 === "true",
     },
   };
 

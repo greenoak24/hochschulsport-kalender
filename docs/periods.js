@@ -22,9 +22,9 @@ const DAY_EVENT_CARD_GAP = 10;
 const DAY_EVENT_LABEL_GUTTER = 54;
 
 const state = {
-  currentDate: stripTime(new Date()),
-  selectedDate: toDateKey(new Date()),
-  viewMode: "month",
+  currentFakeWeekday: 0, // 0=Mo, 6=So
+  periodMode: 1, // 1 oder 2
+  viewMode: "week",
   events: [],
   allSports: [],
   selectedSports: new Set(),
@@ -33,6 +33,8 @@ const state = {
   onlyBookable: false,
   onlySingle: false,
   onlyFree: false,
+  periodAktuell: false,
+  periodSommer: true,
   sportSearch: "",
 };
 
@@ -45,26 +47,24 @@ const sportSearchEl = document.getElementById("sportSearch");
 const sportSuggestionBoxEl = document.getElementById("sportSuggestionBox");
 const selectedSportsEl = document.getElementById("selectedSports");
 const clearSportFilterEl = document.getElementById("clearSportFilter");
+const dayNavGroupEl = document.getElementById("dayNavGroup");
+const periodGroupEl = document.getElementById("periodGroup");
 const bookableOnlyEl = document.getElementById("bookableOnly");
 const singleOnlyEl = document.getElementById("singleOnly");
 const freeOnlyEl = document.getElementById("freeOnly");
 const levelFilterContainerEl = document.getElementById("levelFilterContainer");
 const viewButtons = Array.from(document.querySelectorAll(".view-btn"));
+const periodButtons = Array.from(document.querySelectorAll(".period-btn"));
 
-document.getElementById("prevMonth").addEventListener("click", () => {
-  shiftView(-1);
+document.getElementById("prevDay")?.addEventListener("click", () => {
+  state.currentFakeWeekday--;
+  if (state.currentFakeWeekday < 0) state.currentFakeWeekday = 6;
   render();
 });
 
-document.getElementById("nextMonth").addEventListener("click", () => {
-  shiftView(1);
-  render();
-});
-
-document.getElementById("today").addEventListener("click", () => {
-  const now = stripTime(new Date());
-  state.currentDate = now;
-  state.selectedDate = toDateKey(now);
+document.getElementById("nextDay")?.addEventListener("click", () => {
+  state.currentFakeWeekday++;
+  if (state.currentFakeWeekday > 6) state.currentFakeWeekday = 0;
   render();
 });
 
@@ -73,7 +73,15 @@ viewButtons.forEach((button) => {
     const nextView = button.dataset.view;
     if (!nextView || state.viewMode === nextView) return;
     state.viewMode = nextView;
-    state.selectedDate = toDateKey(state.currentDate);
+    render();
+  });
+});
+
+periodButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const p = parseInt(button.dataset.period, 10);
+    if (state.periodMode === p) return;
+    state.periodMode = p;
     render();
   });
 });
@@ -135,6 +143,22 @@ freeOnlyEl.addEventListener("change", () => {
   render();
 });
 
+document.getElementById("periodAktuell").addEventListener("change", (e) => {
+  if (e.target.checked) {
+    state.periodAktuell = true;
+    state.periodSommer = false;
+    render();
+  }
+});
+
+document.getElementById("periodSommer").addEventListener("change", (e) => {
+  if (e.target.checked) {
+    state.periodSommer = true;
+    state.periodAktuell = false;
+    render();
+  }
+});
+
 init();
 
 async function init() {
@@ -152,6 +176,7 @@ async function loadEvents() {
 
   const payload = await response.json();
   state.events = Array.isArray(payload.events) ? payload.events : [];
+  state.semesterBounds = payload.semesterBounds || {};
 }
 
 function initializeSports() {
@@ -323,15 +348,15 @@ function render() {
   renderSelectedSports();
   renderLevelFilter();
 
-  const viewRange = getViewRange();
   const filteredEvents = filterEvents(state.events);
-  const eventsByDate = buildEventsByDate(filteredEvents, viewRange.start, viewRange.end);
+  const eventsByDate = buildEventsByDate(filteredEvents);
 
-  renderHeader(viewRange);
-  renderWeekdayHeader(viewRange);
-  renderGrid(viewRange, eventsByDate);
+  renderHeader();
+  renderWeekdayHeader();
+  renderGrid(eventsByDate);
 
-  const selectedEvents = eventsByDate.get(state.selectedDate) || [];
+  const selectedIdx = state.viewMode === "week" ? 0 : state.currentFakeWeekday;
+  const selectedEvents = eventsByDate.get(selectedIdx) || [];
   renderDetails(selectedEvents);
 }
 
@@ -339,59 +364,56 @@ function updateViewButtons() {
   viewButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.view === state.viewMode);
   });
+  
+  const getBoundsString = (p) => {
+    const pKey = `p${p}`;
+    let sems = [];
+    if (state.semesterBounds) {
+      if (state.periodSommer && state.semesterBounds["Sommersemester"]) {
+        sems.push(state.semesterBounds["Sommersemester"][pKey]);
+      }
+      if (state.periodAktuell && state.semesterBounds["aktueller_zeitraum"]) {
+        sems.push(state.semesterBounds["aktueller_zeitraum"][pKey]);
+      }
+    }
+    if (!sems.length) return "";
+    
+    const fmt = (ymd) => {
+      if (!ymd || ymd === 99999999 || ymd === 0) return "";
+      const s = String(ymd);
+      return `${s.slice(6, 8)}.${s.slice(4, 6)}.${s.slice(0, 4)}`;
+    };
+    
+    const bStrings = sems.map(b => `${fmt(b.start)} - ${fmt(b.end)}`);
+    return ` (${bStrings.join(" | ")})`;
+  };
+
+  periodButtons.forEach((button) => {
+    const p = parseInt(button.dataset.period, 10);
+    button.classList.toggle("active", p === state.periodMode);
+    button.textContent = `${p}. Zeitraum${getBoundsString(p)}`;
+  });
 }
 
-function getViewRange() {
+function renderHeader() {
   if (state.viewMode === "week") {
-    const start = startOfWeek(state.currentDate);
-    const end = addDays(start, 6);
-    return { start, end, cellCount: 7, isMonthMode: false };
+    monthLabelEl.textContent = `Wochenübersicht`;
+    if (dayNavGroupEl) dayNavGroupEl.style.display = "none";
+  } else {
+    monthLabelEl.textContent = `${weekdayNames[state.currentFakeWeekday]}`;
+    if (dayNavGroupEl) dayNavGroupEl.style.display = "flex";
   }
-
-  if (state.viewMode === "day") {
-    const start = stripTime(state.currentDate);
-    return { start, end: start, cellCount: 1, isMonthMode: false };
-  }
-
-  const monthStart = startOfMonth(state.currentDate);
-  const start = startOfCalendarGrid(monthStart);
-  const end = addDays(start, 41);
-  return { start, end, cellCount: 42, isMonthMode: true };
 }
 
-function renderHeader(viewRange) {
-  if (state.viewMode === "month") {
-    monthLabelEl.textContent = capitalize(monthFormatter.format(state.currentDate));
-    return;
-  }
-
-  if (state.viewMode === "week") {
-    const weekNo = getIsoWeek(viewRange.start);
-    const endLabel = new Intl.DateTimeFormat("de-DE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }).format(viewRange.end);
-    monthLabelEl.textContent = `KW ${weekNo} | ${formatDate(viewRange.start)}-${endLabel}`;
-    return;
-  }
-
-  monthLabelEl.textContent = capitalize(detailFormatter.format(state.currentDate));
-}
-
-function renderWeekdayHeader(viewRange) {
+function renderWeekdayHeader() {
   weekdayRowEl.innerHTML = "";
-
   if (state.viewMode === "day") {
     const el = document.createElement("div");
     el.className = "weekday";
-    el.textContent = capitalize(dayHeaderFormatter.format(viewRange.start));
+    el.textContent = weekdayNames[state.currentFakeWeekday];
     weekdayRowEl.style.gridTemplateColumns = "minmax(0, 1fr)";
     weekdayRowEl.appendChild(el);
-    return;
-  }
-
-  if (state.viewMode === "month") {
+  } else {
     weekdayRowEl.style.gridTemplateColumns = "repeat(7, minmax(0, 1fr))";
     weekdayNames.forEach((name) => {
       const el = document.createElement("div");
@@ -399,78 +421,14 @@ function renderWeekdayHeader(viewRange) {
       el.textContent = name;
       weekdayRowEl.appendChild(el);
     });
-    return;
-  }
-
-  weekdayRowEl.style.gridTemplateColumns = "62px repeat(7, minmax(0, 1fr))";
-
-  const spacer = document.createElement("div");
-  spacer.className = "weekday weekday-spacer";
-  spacer.setAttribute("aria-hidden", "true");
-  weekdayRowEl.appendChild(spacer);
-
-  for (let i = 0; i < 7; i++) {
-    const date = addDays(viewRange.start, i);
-    const el = document.createElement("button");
-    el.type = "button";
-    el.className = "weekday weekday-button";
-    el.textContent = capitalize(dayHeaderFormatter.format(date));
-    el.addEventListener("click", () => openDayView(date));
-    weekdayRowEl.appendChild(el);
   }
 }
 
-function renderGrid(viewRange, eventsByDate) {
-  if (state.viewMode === "week" || state.viewMode === "day") {
-    renderTimeGrid(viewRange, eventsByDate);
-    return;
-  }
-
-  calendarGridEl.innerHTML = "";
-  calendarGridEl.classList.remove("week", "day");
-  calendarGridEl.classList.add("month");
-
-  for (let i = 0; i < viewRange.cellCount; i++) {
-    const date = addDays(viewRange.start, i);
-    const key = toDateKey(date);
-    const dayEvents = eventsByDate.get(key) || [];
-    const isCurrentMonth = date.getMonth() === state.currentDate.getMonth();
-
-    const cell = document.createElement("button");
-    cell.type = "button";
-    cell.className = `day-cell${viewRange.isMonthMode && !isCurrentMonth ? " outside" : ""}${state.selectedDate === key ? " selected" : ""}`;
-
-    const number = document.createElement("div");
-    number.className = "day-number";
-    number.textContent = state.viewMode === "day"
-      ? capitalize(detailFormatter.format(date))
-      : String(date.getDate());
-    cell.appendChild(number);
-
-    const maxVisible = state.viewMode === "day" ? 20 : state.viewMode === "week" ? 5 : 3;
-    dayEvents.slice(0, maxVisible).forEach((event) => {
-      const chip = document.createElement("div");
-      chip.className = `event-chip ${event.isSingle ? "single" : "recurring"}`;
-      chip.textContent = `${event.timeLabel} ${event.title}`.trim();
-      cell.appendChild(chip);
-    });
-
-    if (dayEvents.length > maxVisible) {
-      const more = document.createElement("div");
-      more.className = "event-chip";
-      more.textContent = `+${dayEvents.length - maxVisible} weitere`;
-      cell.appendChild(more);
-    }
-
-    cell.addEventListener("click", () => {
-      openDayView(date);
-    });
-
-    calendarGridEl.appendChild(cell);
-  }
+function renderGrid(eventsByDate) {
+  renderTimeGrid(eventsByDate);
 }
 
-function renderTimeGrid(viewRange, eventsByDate) {
+function renderTimeGrid(eventsByDate) {
   calendarGridEl.innerHTML = "";
   calendarGridEl.classList.remove("month", "week", "day");
   calendarGridEl.classList.add(state.viewMode);
@@ -496,14 +454,14 @@ function renderTimeGrid(viewRange, eventsByDate) {
     columns.classList.add("day-scroll-track");
   }
 
-  for (let i = 0; i < viewRange.cellCount; i++) {
-    const date = addDays(viewRange.start, i);
-    const key = toDateKey(date);
-    const dayEvents = (eventsByDate.get(key) || []).slice().sort((a, b) => a.startMinutes - b.startMinutes);
+  const daysToRender = state.viewMode === "week" ? [0, 1, 2, 3, 4, 5, 6] : [state.currentFakeWeekday];
+
+  for (const dayIdx of daysToRender) {
+    const dayEvents = (eventsByDate.get(dayIdx) || []).slice().sort((a, b) => a.startMinutes - b.startMinutes);
 
     const column = document.createElement("button");
     column.type = "button";
-    column.className = `time-column${state.selectedDate === key ? " selected" : ""}`;
+    column.className = `time-column${state.currentFakeWeekday === dayIdx ? " selected" : ""}`;
 
     const hasLineLabels = state.viewMode === "day";
 
@@ -514,13 +472,11 @@ function renderTimeGrid(viewRange, eventsByDate) {
 
     column.addEventListener("click", () => {
       if (state.viewMode === "week") {
-        openDayView(date);
+        state.currentFakeWeekday = dayIdx;
+        state.viewMode = "day";
+        render();
         return;
       }
-
-      state.selectedDate = key;
-      state.currentDate = date;
-      render();
     });
 
     const dayLayout = state.viewMode === "day" ? buildDayEventLayout(dayEvents) : null;
@@ -693,16 +649,9 @@ function buildDayEventLayout(events) {
   return layout;
 }
 
-function openDayView(date) {
-  state.currentDate = stripTime(date);
-  state.selectedDate = toDateKey(date);
-  state.viewMode = "day";
-  render();
-}
-
 function renderDetails(events) {
-  const selectedDate = fromDateKey(state.selectedDate);
-  detailDateEl.textContent = capitalize(detailFormatter.format(selectedDate));
+  const selectedIdx = state.viewMode === "week" ? 0 : state.currentFakeWeekday;
+  detailDateEl.textContent = state.viewMode === "week" ? "Alle Wochentage" : weekdayNames[selectedIdx];
   detailListEl.innerHTML = "";
 
   if (!events.length) {
@@ -782,74 +731,72 @@ function filterEvents(events) {
       return false;
     }
 
+    if (!state.periodSommer && meta.semester === "Sommersemester") {
+      return false;
+    }
+
+    if (!state.periodAktuell && meta.semester === "aktueller_zeitraum") {
+      return false;
+    }
+
+    const { period1, period2 } = event.extendedProps || {};
+    if (state.periodMode === 1 && !period1) return false;
+    if (state.periodMode === 2 && !period2) return false;
+
     return true;
   });
 }
 
-function buildEventsByDate(events, viewStart, viewEnd) {
+function buildEventsByDate(events) {
   const map = new Map();
+  const seenKeys = new Set();
 
-  const pushEvent = (dateKey, event) => {
-    if (!map.has(dateKey)) map.set(dateKey, []);
-    map.get(dateKey).push(event);
+  const pushEvent = (dayIdx, event) => {
+    const key = `${dayIdx}-${event.sport}-${event.level || ""}-${event.startMinutes}-${event.endMinutes}`;
+    if (seenKeys.has(key)) return;
+    seenKeys.add(key);
+    
+    if (!map.has(dayIdx)) map.set(dayIdx, []);
+    map.get(dayIdx).push(event);
   };
 
   for (const event of events) {
     const meta = getEventMeta(event);
     const isSingle = deriveIsSingle(event);
 
-    if (Array.isArray(event.daysOfWeek) && event.daysOfWeek.length) {
-      const startRecur = event.startRecur ? fromDateKey(event.startRecur) : viewStart;
-      const endRecurExclusive = event.endRecur ? fromDateKey(event.endRecur) : addDays(viewEnd, 1);
+    const pushToFakeDay = (jsWeekday, startMin, endMin, timeLabel) => {
+      // jsWeekday: 0=Sun, 1=Mon ... 6=Sat -> dayIdx: 0=Mo, 6=So
+      let dayIdx = jsWeekday === 0 ? 6 : jsWeekday - 1; 
+      pushEvent(dayIdx, {
+        title: event.title || "Kurs",
+        sport: meta.baseSport,
+        level: meta.level,
+        isSingle,
+        startMinutes: startMin,
+        endMinutes: endMin,
+        timeLabel,
+        location: event.extendedProps?.location,
+        bookingStatus: event.extendedProps?.bookingStatus,
+        url: event.url,
+        courseId: event.extendedProps?.courseId,
+      });
+    };
 
-      let cursor = new Date(Math.max(startRecur.getTime(), viewStart.getTime()));
-      while (cursor <= viewEnd && cursor < endRecurExclusive) {
-        const jsWeekday = cursor.getDay();
-        const normalizedWeekday = jsWeekday === 0 ? 0 : jsWeekday;
-        if (event.daysOfWeek.includes(normalizedWeekday)) {
-          pushEvent(toDateKey(cursor), {
-            title: event.title || "Kurs",
-            sport: meta.baseSport,
-            level: meta.level,
-            isSingle,
-            startMinutes: parseTimeToMinutes(event.startTime),
-            endMinutes: parseTimeToMinutes(event.endTime),
-            timeLabel: timeLabelFromParts(event.startTime, event.endTime),
-            location: event.extendedProps?.location,
-            bookingStatus: event.extendedProps?.bookingStatus,
-            url: event.url,
-            courseId: event.extendedProps?.courseId,
-          });
-        }
-        cursor = addDays(cursor, 1);
-      }
+    if (Array.isArray(event.daysOfWeek) && event.daysOfWeek.length) {
+      event.daysOfWeek.forEach(wd => {
+        pushToFakeDay(wd, parseTimeToMinutes(event.startTime), parseTimeToMinutes(event.endTime), timeLabelFromParts(event.startTime, event.endTime));
+      });
       continue;
     }
 
-    if (!event.start) continue;
-    const startDate = new Date(event.start);
-    if (Number.isNaN(startDate.getTime())) continue;
-
-    const key = toDateKey(startDate);
-    const normalizedKeyDate = fromDateKey(key);
-    const inView = normalizedKeyDate >= viewStart && normalizedKeyDate <= viewEnd;
-    if (!inView) continue;
-
-    pushEvent(key, {
-      title: event.title || "Kurs",
-      sport: meta.baseSport,
-      level: meta.level,
-      isSingle,
-      startMinutes: startDate.getHours() * 60 + startDate.getMinutes(),
-      endMinutes: event.end
-        ? new Date(event.end).getHours() * 60 + new Date(event.end).getMinutes()
-        : startDate.getHours() * 60 + startDate.getMinutes() + 60,
-      timeLabel: timeLabelFromDateStrings(event.start, event.end),
-      location: event.extendedProps?.location,
-      bookingStatus: event.extendedProps?.bookingStatus,
-      url: event.url,
-      courseId: event.extendedProps?.courseId,
-    });
+    if (event.start) {
+      const startDate = new Date(event.start);
+      if (Number.isNaN(startDate.getTime())) continue;
+      const wd = startDate.getDay();
+      const sm = startDate.getHours() * 60 + startDate.getMinutes();
+      const em = event.end ? new Date(event.end).getHours() * 60 + new Date(event.end).getMinutes() : sm + 60;
+      pushToFakeDay(wd, sm, em, timeLabelFromDateStrings(event.start, event.end));
+    }
   }
 
   return map;
@@ -936,23 +883,6 @@ function fuzzyScore(candidate, query) {
   if (text.includes(q)) score += 6;
   score += Math.max(0, 8 - (text.length - q.length) * 0.08);
   return score;
-}
-
-function shiftView(direction) {
-  if (state.viewMode === "month") {
-    state.currentDate = addMonths(state.currentDate, direction);
-    state.selectedDate = toDateKey(state.currentDate);
-    return;
-  }
-
-  if (state.viewMode === "week") {
-    state.currentDate = addDays(state.currentDate, direction * 7);
-    state.selectedDate = toDateKey(state.currentDate);
-    return;
-  }
-
-  state.currentDate = addDays(state.currentDate, direction);
-  state.selectedDate = toDateKey(state.currentDate);
 }
 
 function cleanSport(sport) {

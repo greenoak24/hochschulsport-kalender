@@ -7,5 +7,8 @@
     "build:data": "node scripts/scrape-rwth-and-build.mjs",
     "build:data:csv": "node scripts/build-events.mjs",
     "serve": "python3 -m http.server 8080 -d docs"
+  },
+  "dependencies": {
+    "jsdom": "^29.0.2"
   }
 }

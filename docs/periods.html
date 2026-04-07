@@ -19,28 +19,30 @@
     <main class="layout">
       <header class="hero">
         <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px;">
-          <a href="index.html" class="btn btn-primary">Normaler Kalender</a>
-          <a href="periods.html" class="btn btn-ghost">Zeiträume</a>
+          <a href="index.html" class="btn btn-ghost">Normaler Kalender</a>
+          <a href="periods.html" class="btn btn-primary">Zeiträume</a>
         </div>
         <p class="eyebrow">RWTH Hochschulsport</p>
-        <h1>Kurskalender</h1>
-        <p class="subline">Automatisch aktualisiert aus deinem migrierten Workflow.</p>
+        <h1>Perioden-Kalender</h1>
+        <p class="subline">Kursübersicht für den 1. und 2. Zeitraum pro Wochentag.</p>
       </header>
 
       <section class="calendar-shell">
         <div class="calendar-toolbar">
-          <div class="nav-group">
-            <button id="prevMonth" class="btn" type="button" aria-label="Vorheriger Monat" title="Vorheriger Monat">&larr;</button>
-            <button id="today" class="btn btn-ghost" type="button">Heute</button>
-            <button id="nextMonth" class="btn" type="button" aria-label="Naechster Monat" title="Naechster Monat">&rarr;</button>
+          <div class="nav-group" id="dayNavGroup" style="display:none;">
+            <button id="prevDay" class="btn" type="button">&larr; Vor</button>
+            <button id="nextDay" class="btn" type="button">Weiter &rarr;</button>
           </div>
           <h2 id="monthLabel" class="month-label"></h2>
         </div>
 
         <div class="calendar-controls">
+          <div class="view-group" id="periodGroup">
+            <button class="btn btn-ghost period-btn active" data-period="1" type="button">1. Zeitraum</button>
+            <button class="btn btn-ghost period-btn" data-period="2" type="button">2. Zeitraum</button>
+          </div>
           <div class="view-group" id="viewGroup">
-            <button class="btn btn-ghost view-btn active" data-view="month" type="button">Monat</button>
-            <button class="btn btn-ghost view-btn" data-view="week" type="button">Woche</button>
+            <button class="btn btn-ghost view-btn active" data-view="week" type="button">Woche</button>
             <button class="btn btn-ghost view-btn" data-view="day" type="button">Tag</button>
           </div>
 
@@ -52,6 +54,11 @@
             </div>
             <button id="clearSportFilter" class="btn btn-ghost" type="button">Alle</button>
             <div class="selected-sports" id="selectedSports"></div>
+          </div>
+
+          <div class="toggle-filters">
+            <label><input type="radio" name="semester" id="periodSommer" checked /> Sommersemester</label>
+            <label><input type="radio" name="semester" id="periodAktuell" /> Wintersemester</label>
           </div>
 
           <div class="toggle-filters">
@@ -86,6 +93,6 @@
       </aside>
     </main>
 
-    <script type="module" src="app.js"></script>
+    <script type="module" src="periods.js"></script>
   </body>
 </html>

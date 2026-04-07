@@ -217,6 +217,7 @@ body {
 
 .filter-group label,
 .toggle-filters label,
+.period-filter label,
 .level-label {
   font-weight: 600;
   color: var(--muted);
@@ -311,7 +312,8 @@ body {
   font-weight: 700;
 }
 
-.toggle-filters {
+.toggle-filters,
+.period-filter {
   width: 100%;
   display: flex;
   gap: 14px;
@@ -320,13 +322,15 @@ body {
   margin-top: 2px;
 }
 
-.toggle-filters label {
+.toggle-filters label,
+.period-filter label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.toggle-filters input[type="checkbox"] {
+.toggle-filters input[type="checkbox"],
+.period-filter input[type="checkbox"] {
   accent-color: var(--accent);
 }
 
