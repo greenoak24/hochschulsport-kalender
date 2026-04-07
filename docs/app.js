@@ -1129,11 +1129,19 @@ chatForm.addEventListener('submit', async (e) => {
       url: e.url
     }));
 
+    // Wir fügen dem Chat-Verlauf immer das heutige Datum hinzu, damit die KI weiß, welcher Tag heute ist
+    const todayStr = new Intl.DateTimeFormat('de-DE', { dateStyle: 'full' }).format(new Date());
+    const payloadHistory = [
+      { role: "user", parts: [{ text: `Wichtige Info für dich: Das heutige Datum ist ${todayStr}. Wenn der Nutzer nach "heute" oder bestimmten Wochentagen fragt, beziehe dich exakt auf dieses Datum.` }] },
+      { role: "model", parts: [{ text: "Verstanden, ich werde dieses Datum für alle meine Antworten berücksichtigen." }] },
+      ...chatHistory
+    ];
+
     const response = await fetch(WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        messages: chatHistory,
+        messages: payloadHistory,
         eventsData: shortEvents
       })
     });
