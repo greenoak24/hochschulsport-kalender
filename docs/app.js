@@ -1116,7 +1116,7 @@ chatForm.addEventListener('submit', async (e) => {
     }
   
     // Wir filtern die Events, damit das JSON nicht zu groß wird
-    const relevantEvents = filterEvents() || state.events;
+    const relevantEvents = filterEvents(state.events) || state.events;
     // Nimm z.B. nur Kerninformationen, um Token/Größe zu sparen
     const shortEvents = relevantEvents.map(e => ({
       title: e.title,

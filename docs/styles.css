@@ -839,7 +839,7 @@ body {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: var(--rwth-blue);
+  background: var(--accent);
   color: white;
   border: none;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
@@ -869,7 +869,7 @@ body {
 .chat-window.open { display: flex; }
 
 .chat-header {
-  background: var(--rwth-blue);
+  background: var(--accent);
   color: white;
   padding: 15px;
   font-weight: bold;
@@ -907,7 +907,7 @@ body {
   border-bottom-left-radius: 4px;
 }
 .chat-msg.user {
-  background: var(--rwth-blue);
+  background: var(--accent);
   color: white;
   align-self: flex-end;
   border-bottom-right-radius: 4px;
@@ -935,9 +935,9 @@ body {
   font-family: inherit;
   box-sizing: border-box;
 }
-.chat-input-area textarea:focus { border-color: var(--rwth-blue); }
+.chat-input-area textarea:focus { border-color: var(--accent); }
 .chat-input-area button {
-  background: var(--rwth-blue);
+  background: var(--accent);
   color: white;
   border: none;
   border-radius: 50%;
