@@ -86,6 +86,30 @@
       </aside>
     </main>
 
+    <!-- KI Chat Widget -->
+    <div id="chatWidget" class="chat-widget">
+      <button id="chatToggleButton" class="chat-button" title="Frag die KI">
+        <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      </button>
+      <div id="chatWindow" class="chat-window">
+        <div class="chat-header">
+          <span>RWTH Sport-Bot</span>
+          <button id="chatCloseButton">&times;</button>
+        </div>
+        <div id="chatMessages" class="chat-messages">
+          <div class="chat-msg bot">
+            Hi! Ich bin der RWTH Sport-Bot. Du kannst mich alles zu den aktuellen Kursen fragen (z.B. "Gibt es heute Boxkurse unter 20 Euro?").
+          </div>
+        </div>
+        <form id="chatForm" class="chat-input-area">
+          <textarea id="chatInput" placeholder="Stelle eine Frage..." rows="1" autocomplete="off"></textarea>
+          <button type="submit" id="chatSubmit" title="Senden">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </form>
+      </div>
+    </div>
+
     <script type="module" src="app.js"></script>
   </body>
 </html>

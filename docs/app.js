@@ -1045,3 +1045,115 @@ function pad(value) {
 function capitalize(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
+
+// --- KI CHAT WIDGET LOGIK ---
+const WORKER_URL = "https://twilight-waterfall-c273.v-weller9.workers.dev";
+
+const chatWindow = document.getElementById('chatWindow');
+const chatToggleBtn = document.getElementById('chatToggleButton');
+const chatCloseBtn = document.getElementById('chatCloseButton');
+const chatForm = document.getElementById('chatForm');
+const chatInput = document.getElementById('chatInput');
+const chatMessages = document.getElementById('chatMessages');
+const chatSubmit = document.getElementById('chatSubmit');
+
+let chatHistory = [];
+
+chatInput.addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = (this.scrollHeight) + 'px';
+});
+
+chatInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    chatForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+  }
+});
+
+chatToggleBtn.addEventListener('click', () => {
+  chatWindow.classList.toggle('open');
+  if (chatWindow.classList.contains('open')) chatInput.focus();
+});
+
+chatCloseBtn.addEventListener('click', () => {
+  chatWindow.classList.remove('open');
+});
+
+function appendMessage(text, role) {
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `chat-msg ${role}`;
+  msgDiv.textContent = text;
+  chatMessages.appendChild(msgDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+chatForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = chatInput.value.trim();
+  if (!text) return;
+  
+  // Eigene Nachricht anzeigen
+  appendMessage(text, "user");
+  chatInput.value = "";
+  chatInput.style.height = 'auto'; // Setzt die Höhe wieder zurück
+  chatInput.disabled = true;
+  chatSubmit.disabled = true;
+  
+  chatHistory.push({ role: "user", parts: [{ text }] });
+
+  // Füge einen Lade-Indikator hinzu
+  const loadingDiv = document.createElement('div');
+  loadingDiv.className = "chat-msg bot";
+  loadingDiv.textContent = "Denkt nach...";
+  loadingDiv.id = "chatLoading";
+  chatMessages.appendChild(loadingDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  try {
+    if (WORKER_URL === "HIER_URL_VON_DEINEM_WORKER_EINTRAGEN") {
+      throw new Error("Bitte ersetze HIER_URL_VON_DEINEM_WORKER_EINTRAGEN in der app.js durch deine echte Cloudflare Worker URL.");
+    }
+  
+    // Wir filtern die Events, damit das JSON nicht zu groß wird
+    const relevantEvents = filterEvents() || state.events;
+    // Nimm z.B. nur Kerninformationen, um Token/Größe zu sparen
+    const shortEvents = relevantEvents.map(e => ({
+      title: e.title,
+      start: e.start,
+      end: e.end,
+      wochentag: e.extendedProps?.wochentag,
+      buchung: e.extendedProps?.bookingStatus,
+      preis: e.extendedProps?.price,
+      kategorie: e.extendedProps?.kategorie || 'Sonstige',
+      url: e.url
+    }));
+
+    const response = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: chatHistory,
+        eventsData: shortEvents
+      })
+    });
+
+    const data = await response.json();
+    document.getElementById("chatLoading")?.remove();
+    
+    if (data.candidates && data.candidates[0].content.parts[0].text) {
+      const gResult = data.candidates[0].content.parts[0].text;
+      appendMessage(gResult, "bot");
+      chatHistory.push({ role: "model", parts: [{ text: gResult }] });
+    } else {
+      appendMessage("Sorry, ich konnte das nicht beantworten.", "bot");
+    }
+  } catch (err) {
+    document.getElementById("chatLoading")?.remove();
+    appendMessage("Verbindungsfehler: " + err.message, "bot");
+  }
+
+  chatInput.disabled = false;
+  chatSubmit.disabled = false;
+  chatInput.focus();
+});

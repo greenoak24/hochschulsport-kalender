@@ -459,6 +459,7 @@ function rowToEvent(rawRow, index) {
     url: row.url || undefined,
     extendedProps: {
       courseId: row.id || null,
+      kategorie: getCategory(title),
       semester: row.semester || null,
       sport: row.sportart || null,
       location: row.ort || null,
@@ -834,6 +835,19 @@ function toDateString(year, month, day) {
 
 function withSeconds(time) {
   return time.length === 5 ? `${time}:00` : time;
+}
+
+function getCategory(title) {
+  const t = title.toLowerCase();
+  if (t.includes("basketball") || t.includes("fußball") || t.includes("fussball") || t.includes("volleyball") || t.includes("tennis") || t.includes("badminton") || t.includes("handball") || t.includes("tischtennis") || t.includes("squash") || t.includes("hockey")) return "Ballsport";
+  if (t.includes("tanz") || t.includes("ballett") || t.includes("hip hop") || t.includes("salsa") || t.includes("zumba") || t.includes("bachata") || t.includes("kizomba") || t.includes("swing")) return "Tanzsport";
+  if (t.includes("yoga") || t.includes("pilates") || t.includes("meditation") || t.includes("tai chi") || t.includes("qigong") || t.includes("entspannung")) return "Entspannung & Gesundheit";
+  if (t.includes("schwimm") || t.includes("tauch") || t.includes("aqua") || t.includes("wasser") || t.includes("ruder") || t.includes("segeln") || t.includes("kite") || t.includes("kanu") || t.includes("surf")) return "Wassersport";
+  if (t.includes("fitness") || t.includes("workout") || t.includes("kraft") || t.includes("crossfit") || t.includes("gymnastik") || t.includes("bodyshaping") || t.includes("aerobic") || t.includes("langhantel") || t.includes("trimm") || t.includes("core")) return "Fitness & Kraft";
+  if (t.includes("boxen") || t.includes("karate") || t.includes("judo") || t.includes("taekwondo") || t.includes("fechten") || t.includes("kampfsport") || t.includes("arnis") || t.includes("jiu") || t.includes("krav") || t.includes("capoeira")) return "Kampfsport";
+  if (t.includes("klettern") || t.includes("bouldern") || t.includes("alpin") || t.includes("parkour")) return "Klettern & Alpin";
+  if (t.includes("rad") || t.includes("mountain") || t.includes("skate") || t.includes("inliner") || t.includes("lauf") || t.includes("leichtathletik") || t.includes("triathlon")) return "Outdoor & Ausdauer";
+  return "Sonstige";
 }
 
 function normalizeRow(row) {
