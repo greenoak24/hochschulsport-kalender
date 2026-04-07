@@ -1083,7 +1083,11 @@ chatCloseBtn.addEventListener('click', () => {
 function appendMessage(text, role) {
   const msgDiv = document.createElement('div');
   msgDiv.className = `chat-msg ${role}`;
-  msgDiv.textContent = text;
+  if (role === 'bot' && typeof marked !== 'undefined') {
+    msgDiv.innerHTML = marked.parse(text);
+  } else {
+    msgDiv.textContent = text;
+  }
   chatMessages.appendChild(msgDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
