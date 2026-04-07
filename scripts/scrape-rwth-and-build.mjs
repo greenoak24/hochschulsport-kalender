@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { JSDOM } from "jsdom";
 
 const BASE_URL = "https://buchung.hsz.rwth-aachen.de/angebote/";
 const SEMESTER_PATHS = [
@@ -181,9 +182,13 @@ async function main() {
 
 function extractCourseLinks(indexHtml, baseUrl) {
   const links = [];
+  const dom = new JSDOM(indexHtml);
+  const document = dom.window.document;
 
-  for (const match of indexHtml.matchAll(/<dd[^>]*>\s*<span[^>]*><\/span>\s*<a href=["']([^"']+)["'][^>]*>/gi)) {
-    const href = (match[1] || "").trim();
+  const anchors = document.querySelectorAll("dd > a, dd > span + a");
+
+  for (const a of anchors) {
+    const href = (a.getAttribute("href") || "").trim();
     if (!href) continue;
     if (href.startsWith("#")) continue;
     if (href.includes("kurssuche")) continue;
@@ -198,8 +203,11 @@ function extractCourseLinks(indexHtml, baseUrl) {
 }
 
 function parseBookingPage({ html, bookingUrl, sourceTitle, semester }) {
-  const sport = extractSportHeadline(html) || sourceTitle;
-  const rows = extractCourseRowsFromHtml(html);
+  const dom = new JSDOM(html);
+  const document = dom.window.document;
+
+  const sport = extractSportHeadline(document) || sourceTitle;
+  const rows = extractCourseRowsFromHtml(document);
 
   return rows
     .map((row) => {
@@ -233,179 +241,41 @@ function parseBookingPage({ html, bookingUrl, sourceTitle, semester }) {
     .filter(Boolean);
 }
 
-function extractSportHeadline(html) {
-  const match = html.match(/class=["'][^"']*bs_head[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i);
-  if (!match) return null;
-  return cleanText(match[1]);
+function extractSportHeadline(document) {
+  const head = document.querySelector(".bs_head");
+  if (!head) return null;
+  return cleanText(head.textContent);
 }
 
-function extractCourseColumns(html) {
-  const tdRegex = /<td[^>]*class=["']([^"']+)["'][^>]*>([\s\S]*?)<\/td>/gi;
-  const courses = [];
-  const bookingCells = [];
-
-  for (const match of html.matchAll(tdRegex)) {
-    const className = match[1];
-    const inner = match[2] || "";
-
-    if (!/\bbs_s(knr|det|stag|szeit|sort|szr|skl|spreis|sbuch)\b/i.test(className)) {
-      continue;
-    }
-
-    const text = cleanText(inner);
-    courses.push(text);
-
-    if (/\bbs_sbuch\b/i.test(className)) {
-      bookingCells.push(inner);
-    }
-  }
-
-  return { courses, bookingCells };
-}
-
-function extractCourseRowsFromHtml(html) {
+function extractCourseRowsFromHtml(document) {
   const out = [];
+  const rows = document.querySelectorAll("tr.bs_odd, tr.bs_even");
+  
+  for (const row of rows) {
+    if (!row.querySelector(".bs_sknr")) continue;
 
-  const blocks = html.split(/<div[^>]*class=["'][^"']*bs_angblock\b[^"']*["']/i);
-  if (blocks.length === 0) return out;
+    const block = row.closest(".bs_angblock");
+    const blockText = block ? block.textContent : document.body.textContent;
+    const explicitP1 = /1\.?\s*zeitraum|erster\s*zeitraum/i.test(blockText);
+    const explicitP2 = /2\.?\s*zeitraum|zweiter\s*zeitraum/i.test(blockText);
 
-  for (let i = 0; i < blocks.length; i++) {
-    const block = blocks[i];
-    const explicitP1 = /1\.?\s*zeitraum|erster\s*zeitraum/i.test(block);
-    const explicitP2 = /2\.?\s*zeitraum|zweiter\s*zeitraum/i.test(block);
+    const getCellText = (cls) => cleanText(row.querySelector(`.${cls}`)?.innerHTML || "");
+    const getCellEl = (cls) => row.querySelector(`.${cls}`);
 
-    const parts = block.split(/<tr[^>]*class=["']bs_(?:odd|even)["'][^>]*>/i).slice(1);
-    for (const rowHtml of parts) {
-      if (!/\bbs_sknr\b/i.test(rowHtml)) continue;
-
-      const courseNumber = cleanText(extractCellHtml(rowHtml, "bs_sknr"));
-      const details = cleanText(extractCellHtml(rowHtml, "bs_sdet"));
-      const day = cleanText(extractCellHtml(rowHtml, "bs_stag"));
-      const time = cleanText(extractCellHtml(rowHtml, "bs_szeit"));
-      const location = cleanText(extractCellHtml(rowHtml, "bs_sort"));
-      const duration = cleanText(extractCellHtml(rowHtml, "bs_szr"));
-      const instructor = cleanText(extractCellHtml(rowHtml, "bs_skl"));
-      const price = cleanText(extractCellHtml(rowHtml, "bs_spreis"));
-      const bookingHtml = extractCellHtml(rowHtml, "bs_sbuch");
-      const bookingStatus = extractBookingStatus(bookingHtml);
-
-      out.push({
-        courseNumber,
-        details,
-        day,
-        time,
-        location,
-        duration,
-        instructor,
-        price,
-        bookingStatus,
-        explicitP1,
-        explicitP2,
-      });
-    }
+    out.push({
+      courseNumber: getCellText("bs_sknr"),
+      details: getCellText("bs_sdet"),
+      day: getCellText("bs_stag"),
+      time: getCellText("bs_szeit"),
+      location: getCellText("bs_sort"),
+      duration: getCellText("bs_szr"),
+      instructor: getCellText("bs_skl"),
+      price: getCellText("bs_spreis"),
+      bookingStatus: extractBookingStatus(getCellEl("bs_sbuch")),
+      explicitP1,
+      explicitP2,
+    });
   }
-
-  return out;
-}
-
-function extractCellHtml(rowHtml, className) {
-  const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const regex = new RegExp(
-    `<td[^>]*class=["'][^"']*\\b${escaped}\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/td>`,
-    "i"
-  );
-  const match = rowHtml.match(regex);
-  return match ? match[1] : "";
-}
-
-function parseCourseRows({ courses, bookingCells, sport, sourceTitle, bookingUrl }) {
-  const out = [];
-  const cleaned = courses.map(cleanText).filter(Boolean);
-
-  let i = 0;
-  let bookingIndex = 0;
-
-  while (i < cleaned.length) {
-    let courseNumber = cleaned[i] || "";
-    if (!isCourseNumber(courseNumber)) {
-      i++;
-      continue;
-    }
-
-    if (!courseNumber) {
-      courseNumber = randomCourseNumber();
-    }
-    i++;
-
-    const details = cleaned[i] || "";
-    i++;
-
-    const scheduleBlocks = [];
-
-    while (i < cleaned.length && isDay(cleaned[i])) {
-      const day = cleaned[i] || "";
-      const time = cleaned[i + 1] || "";
-      let location = "";
-
-      if (!isTimeRange(time)) break;
-      i += 2;
-
-      const candidateLocation = cleaned[i] || "";
-      if (looksLikeLocation(candidateLocation)) {
-        location = candidateLocation;
-        i++;
-      }
-
-      scheduleBlocks.push({ day, time, location });
-    }
-
-    let duration = "";
-    let instructor = "";
-    let price = "";
-
-    if (i < cleaned.length && isDateRange(cleaned[i])) {
-      duration = cleaned[i];
-      i++;
-    }
-
-    if (i < cleaned.length && !isPrice(cleaned[i]) && !isCourseNumber(cleaned[i])) {
-      instructor = cleaned[i];
-      i++;
-    }
-
-    if (i < cleaned.length && isPrice(cleaned[i])) {
-      price = cleaned[i];
-      i++;
-    }
-
-    const bookingStatus = extractBookingStatus(bookingCells[bookingIndex] || "");
-    bookingIndex += 1;
-
-    const einzeltermin = details.includes("Ein Termin") ? "ja" : "nein";
-
-    for (const block of scheduleBlocks) {
-      const scheduleTimes = buildScheduleTimes(block.time, duration);
-
-      out.push({
-        ID: courseNumber,
-        Titel: details,
-        Sportart: sourceTitle || sport || null,
-        Wochentag: block.day,
-        Start: block.time,
-        Ende: duration,
-        StartDatetime: scheduleTimes.start,
-        EndDateTime: scheduleTimes.end,
-        ReocurringEnd: scheduleTimes.recurringEnd,
-        Einzeltermin: einzeltermin,
-        Ort: block.location || "",
-        URL: bookingUrl,
-        Buchung: bookingStatus,
-        preisStudierende: price,
-        instructor,
-      });
-    }
-  }
-
   return out;
 }
 
