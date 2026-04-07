@@ -157,13 +157,23 @@ async function loadEvents() {
 }
 
 function initializeSports() {
-  state.allSports = Array.from(
+  const sports = Array.from(
     new Set(
       state.events
         .map((event) => getEventMeta(event).baseSport)
         .filter(Boolean)
     )
-  ).sort((a, b) => a.localeCompare(b, "de"));
+  );
+  
+  const categories = Array.from(
+    new Set(
+      state.events
+        .map((event) => event.extendedProps?.kategorie)
+        .filter(Boolean)
+    )
+  ).map((cat) => "Kategorie: " + cat);
+
+  state.allSports = [...sports, ...categories].sort((a, b) => a.localeCompare(b, "de"));
 }
 
 function renderSportFilterOptions() {
@@ -311,7 +321,9 @@ function getAvailableLevelsForSelection() {
 
   state.events.forEach((event) => {
     const meta = getEventMeta(event);
-    if (!state.selectedSports.has(meta.baseSport)) return;
+    const matchSport = state.selectedSports.has(meta.baseSport);
+    const matchCat = state.selectedSports.has("Kategorie: " + event.extendedProps?.kategorie);
+    if (!matchSport && !matchCat) return;
     if (!meta.level) return;
     levels.add(meta.level);
   });
@@ -774,8 +786,10 @@ function filterEvents(events) {
     const isBookable = isBookableStatus(event.extendedProps?.bookingStatus);
     const isFree = (event.extendedProps?.price || "").toLowerCase().includes("entgeltfrei");
 
-    if (state.selectedSports.size && !state.selectedSports.has(meta.baseSport)) {
-      return false;
+    if (state.selectedSports.size) {
+      const matchSport = state.selectedSports.has(meta.baseSport);
+      const matchCat = state.selectedSports.has("Kategorie: " + event.extendedProps?.kategorie);
+      if (!matchSport && !matchCat) return false;
     }
 
     if (state.selectedSports.size && state.levelFilterPrimed && meta.level && !state.selectedLevels.has(meta.level)) {
