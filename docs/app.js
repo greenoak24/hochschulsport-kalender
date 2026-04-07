@@ -107,7 +107,7 @@ sportSearchEl.addEventListener("keydown", (event) => {
 });
 
 clearSportFilterEl.addEventListener("click", () => {
-  state.selectedSports = new Set();
+  state.selectedSports = new Set(["Alle Sportarten"]);
   state.selectedLevels = new Set();
   state.levelFilterPrimed = false;
   state.onlyBookable = false;
@@ -321,9 +321,10 @@ function getAvailableLevelsForSelection() {
 
   state.events.forEach((event) => {
     const meta = getEventMeta(event);
+    const isAll = state.selectedSports.has("Alle Sportarten");
     const matchSport = state.selectedSports.has(meta.baseSport);
     const matchCat = state.selectedSports.has("Kategorie: " + event.extendedProps?.kategorie);
-    if (!matchSport && !matchCat) return;
+    if (!isAll && !matchSport && !matchCat) return;
     if (!meta.level) return;
     levels.add(meta.level);
   });
@@ -787,9 +788,10 @@ function filterEvents(events) {
     const isFree = (event.extendedProps?.price || "").toLowerCase().includes("entgeltfrei");
 
     if (state.selectedSports.size) {
+      const isAll = state.selectedSports.has("Alle Sportarten");
       const matchSport = state.selectedSports.has(meta.baseSport);
       const matchCat = state.selectedSports.has("Kategorie: " + event.extendedProps?.kategorie);
-      if (!matchSport && !matchCat) return false;
+      if (!isAll && !matchSport && !matchCat) return false;
     }
 
     if (state.selectedSports.size && state.levelFilterPrimed && meta.level && !state.selectedLevels.has(meta.level)) {

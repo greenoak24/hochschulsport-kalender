@@ -41,9 +41,12 @@
 
           <div class="filter-group">
             <label for="sportSearch">Sportart / Kategorie</label>
-            <div class="sport-search-wrap">
-              <input id="sportSearch" type="search" placeholder="Sportart oder Kategorie suchen..." autocomplete="off" />
-              <div id="sportSuggestionBox" class="suggestion-box"></div>
+            <div style="display: flex; gap: 0.5rem; align-items: stretch; width: 100%;">
+              <div class="sport-search-wrap" style="flex: 1;">
+                <input id="sportSearch" type="search" placeholder="Sportart oder Kategorie suchen..." autocomplete="off" style="width: 100%; box-sizing: border-box;" />
+                <div id="sportSuggestionBox" class="suggestion-box"></div>
+              </div>
+              <button id="clearSportFilter" class="btn" type="button" style="white-space: nowrap;">Alles auswählen</button>
             </div>
             
             <div class="selected-sports" id="selectedSports"></div>
