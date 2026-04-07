@@ -1,3 +1,4 @@
+import { initChat } from './ai-chat.js';
 const weekdayNames = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
 const monthFormatter = new Intl.DateTimeFormat("de-DE", {
@@ -141,6 +142,7 @@ async function init() {
   await loadEvents();
   initializeSports();
   render();
+  initChat("https://twilight-waterfall-c273.v-weller9.workers.dev", filterEvents, state);
 }
 
 async function loadEvents() {
@@ -1046,128 +1048,3 @@ function capitalize(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-// --- KI CHAT WIDGET LOGIK ---
-const WORKER_URL = "https://twilight-waterfall-c273.v-weller9.workers.dev";
-
-const aiWindow = document.getElementById('aiWindow');
-const chatToggleBtn = document.getElementById('aiToggleButton');
-const chatCloseBtn = document.getElementById('aiCloseButton');
-const aiForm = document.getElementById('aiForm');
-const aiInput = document.getElementById('aiInput');
-const aiMessages = document.getElementById('aiMessages');
-const aiSubmit = document.getElementById('aiSubmit');
-
-let chatHistory = [];
-
-aiInput.addEventListener('input', function() {
-  this.style.height = 'auto';
-  this.style.height = (this.scrollHeight) + 'px';
-});
-
-aiInput.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    aiForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-  }
-});
-
-chatToggleBtn.addEventListener('click', () => {
-  aiWindow.classList.toggle('open');
-  if (aiWindow.classList.contains('open')) aiInput.focus();
-});
-
-chatCloseBtn.addEventListener('click', () => {
-  aiWindow.classList.remove('open');
-});
-
-function appendMessage(text, role) {
-  const msgDiv = document.createElement('div');
-  msgDiv.className = `ai-msg ${role === "bot" ? "ai" : role}`;
-  if (role === 'bot' && typeof marked !== 'undefined') {
-    msgDiv.innerHTML = marked.parse(text);
-  } else {
-    msgDiv.textContent = text;
-  }
-  aiMessages.appendChild(msgDiv);
-  aiMessages.scrollTop = aiMessages.scrollHeight;
-}
-
-aiForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const text = aiInput.value.trim();
-  if (!text) return;
-  
-  // Eigene Nachricht anzeigen
-  appendMessage(text, "user");
-  aiInput.value = "";
-  aiInput.style.height = 'auto'; // Setzt die Höhe wieder zurück
-  aiInput.disabled = true;
-  aiSubmit.disabled = true;
-  
-  chatHistory.push({ role: "user", parts: [{ text }] });
-
-  // Füge einen Lade-Indikator hinzu
-  const loadingDiv = document.createElement('div');
-  loadingDiv.className = "ai-msg ai";
-  loadingDiv.textContent = "Denkt nach...";
-  loadingDiv.id = "aiLoading";
-  aiMessages.appendChild(loadingDiv);
-  aiMessages.scrollTop = aiMessages.scrollHeight;
-
-  try {
-    if (WORKER_URL === "HIER_URL_VON_DEINEM_WORKER_EINTRAGEN") {
-      throw new Error("Bitte ersetze HIER_URL_VON_DEINEM_WORKER_EINTRAGEN in der app.js durch deine echte Cloudflare Worker URL.");
-    }
-  
-    // Wir filtern die Events, damit das JSON nicht zu groß wird
-    const relevantEvents = filterEvents(state.events) || state.events;
-    // Nimm z.B. nur Kerninformationen, um Token/Größe zu sparen
-    const shortEvents = relevantEvents.map(e => ({
-      title: e.title,
-      start: e.start,
-      end: e.end,
-      wochentag: e.extendedProps?.wochentag,
-      buchung: e.extendedProps?.bookingStatus,
-      preis: e.extendedProps?.price,
-      kategorie: e.extendedProps?.kategorie || 'Sonstige',
-      url: e.url
-    }));
-
-    // Wir fügen dem Chat-Verlauf immer das heutige Datum hinzu, damit die KI weiß, welcher Tag heute ist
-    const todayStr = new Intl.DateTimeFormat('de-DE', { dateStyle: 'full' }).format(new Date());
-    const payloadHistory = [
-      { role: "user", parts: [{ text: `Wichtige Info für dich: Das heutige Datum ist ${todayStr}. Wenn der Nutzer nach "heute" oder bestimmten Wochentagen fragt, beziehe dich exakt auf dieses Datum.` }] },
-      { role: "model", parts: [{ text: "Verstanden, ich werde dieses Datum für alle meine Antworten berücksichtigen." }] },
-      ...chatHistory
-    ];
-
-    const response = await fetch(WORKER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: payloadHistory,
-        eventsData: shortEvents
-      })
-    });
-
-    const data = await response.json();
-    document.getElementById("aiLoading")?.remove();
-    
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
-      const gResult = data.candidates[0].content.parts[0].text;
-      appendMessage(gResult, "bot");
-      chatHistory.push({ role: "model", parts: [{ text: gResult }] });
-    } else {
-      console.error("API Response Error:", data);
-      const errMsg = data.error?.message || "Unbekanntes Antwort-Format.";
-      appendMessage("Sorry, ich konnte das nicht beantworten (" + errMsg + ").", "bot");
-    }
-  } catch (err) {
-    document.getElementById("aiLoading")?.remove();
-    appendMessage("Verbindungsfehler: " + err.message, "bot");
-  }
-
-  aiInput.disabled = false;
-  aiSubmit.disabled = false;
-  aiInput.focus();
-});

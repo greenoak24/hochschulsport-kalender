@@ -1,3 +1,4 @@
+import { initChat } from './ai-chat.js';
 const weekdayNames = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
 const monthFormatter = new Intl.DateTimeFormat("de-DE", {
@@ -165,6 +166,7 @@ async function init() {
   await loadEvents();
   initializeSports();
   render();
+  initChat("https://twilight-waterfall-c273.v-weller9.workers.dev", filterEvents, state);
 }
 
 async function loadEvents() {
