@@ -1146,7 +1146,9 @@ chatForm.addEventListener('submit', async (e) => {
       appendMessage(gResult, "bot");
       chatHistory.push({ role: "model", parts: [{ text: gResult }] });
     } else {
-      appendMessage("Sorry, ich konnte das nicht beantworten.", "bot");
+      console.error("API Response Error:", data);
+      const errMsg = data.error?.message || "Unbekanntes Antwort-Format.";
+      appendMessage("Sorry, ich konnte das nicht beantworten (" + errMsg + ").", "bot");
     }
   } catch (err) {
     document.getElementById("chatLoading")?.remove();
